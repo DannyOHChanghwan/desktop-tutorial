@@ -144,19 +144,9 @@
 
     <!-- Settings panel -->
     <div class="card settings" id="settingsPanel">
-      <div class="setrow">
-        <div>
-          <div class="k">숫자 발음</div>
-          <div class="d">한자어(일·이·삼) / 고유어(하나·둘·셋)</div>
-        </div>
-        <div class="seg" id="segCountMode">
-          <button data-v="sino" class="on">한자어</button>
-          <button data-v="native">고유어</button>
-        </div>
-      </div>
       <div class="setrow" style="flex-direction:column;align-items:stretch;gap:8px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div><div class="k">목소리</div><div class="d">설치된 음성 중 선택 · 남성 우선</div></div>
+          <div><div class="k">목소리 (음성 언어: US English)</div><div class="d">설치된 영어 음성 중 선택 · en-US 남성 우선</div></div>
           <button class="btn green small" id="btnTestVoice" style="width:auto;padding:8px 14px;">🔊 테스트</button>
         </div>
         <select id="voiceSelect" style="width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;font-size:14px;"></select>
@@ -251,22 +241,22 @@
 /* ---------------------- 운동 정의 ---------------------- */
 const EXERCISES = [
   {
-    id:'wave', name:'웨이브 베개 이완', emoji:'🌊', type:'timer',
+    id:'wave', name:'웨이브 베개 이완', voiceName:'Wave pillow relaxation', emoji:'🌊', type:'timer',
     durationSec:600, estSec:600, est:'10분',
     desc:'베개를 이용해 상체의 긴장을 천천히 풀어줍니다.',
-    startMsg:'이완 운동 시작', completeMsg:'이완 운동 완료'
+    startMsg:'Relaxation, start', completeMsg:'Relaxation complete'
   },
   {
-    id:'tmove', name:'T MOVE', emoji:'💪', type:'count',
+    id:'tmove', name:'T MOVE', voiceName:'T move', emoji:'💪', type:'count',
     reps:50, sets:4, intervalSec:1, restSec:10, estSec:230, est:'약 3분 50초',
     desc:'50회 × 4세트 · 세트 사이 10초 휴식',
-    completeMsg:'T MOVE 완료'
+    completeMsg:'T move complete'
   },
   {
-    id:'lmove', name:'L MOVE', emoji:'🦵', type:'count',
+    id:'lmove', name:'L MOVE', voiceName:'L move', emoji:'🦵', type:'count',
     reps:20, sets:20, intervalSec:1.5, restSec:5, estSec:695, est:'약 11분 35초',
     desc:'20회 × 20세트 · 세트 사이 5초 휴식',
-    completeMsg:'L MOVE 완료'
+    completeMsg:'L move complete'
   },
 ];
 
@@ -299,34 +289,42 @@ function nativeKorean(n){
   if(n<100) return tens[Math.floor(n/10)] + ones[n%10];
   return String(n);
 }
-// 한자어(sino)는 TTS가 숫자 문자열을 그대로 한자어로 읽어줌
-function numSpeech(n){ return settings.countMode==='native' ? nativeKorean(n) : String(n); }
+// 음성 언어가 en-US이므로 숫자 문자열을 넘기면 영어로 읽어줌("5" → "five")
+function numSpeech(n){ return String(n); }
 
 /* ---------------------- 음성(TTS) ---------------------- */
-// Web Speech API에는 성별 정보가 없어 음성 이름으로 추정한다.
-const MALE_HINTS = ['injoon','minjun','minjoon','male','man','남성','남자','민준','현수','기수','gilsu','hyunsu','david','otoya'];
-const FEMALE_HINTS = ['yuna','sunhi','heami','nara','sora','seoyeon','jimin','female','woman','여성','여자','유나','선희','서연','지민','나라'];
+// Web Speech API에는 성별 정보가 없어 음성 이름으로 추정한다.(영어 음성 이름 포함)
+const MALE_HINTS = ['male','man','david','guy','eric','christopher','brian','matthew','mark','george','james','ryan','tom','alex','fred','daniel','injoon','남성','남자'];
+const FEMALE_HINTS = ['female','woman','zira','jenny','aria','samantha','victoria','susan','allison','ava','emma','joanna','salli','kimberly','karen','moira','tessa','yuna','sunhi','여성','여자'];
 function genderScore(v){
   const n = ((v.name||'') + ' ' + (v.voiceURI||'')).toLowerCase();
   if(MALE_HINTS.some(k=>n.includes(k))) return 1;    // 남성 추정
   if(FEMALE_HINTS.some(k=>n.includes(k))) return -1;  // 여성 추정
   return 0;                                           // 불명
 }
+// en-US 우선(+10), 그 외 영어(+5), 그다음 남성 우선
+function voiceScore(v){
+  const lang = (v.lang||'').toLowerCase().replace('_','-');
+  let s = 0;
+  if(lang === 'en-us') s += 10;
+  else if(lang.startsWith('en')) s += 5;
+  return s + genderScore(v);
+}
 
 let allVoices = [];
-let koVoices = [];
+let enVoices = [];
 let selectedVoice = null;
 
 function loadVoices(){
   if(!('speechSynthesis' in window)) return;
   allVoices = speechSynthesis.getVoices() || [];
-  koVoices = allVoices.filter(v=>v.lang && v.lang.toLowerCase().replace('_','-').startsWith('ko'));
+  enVoices = allVoices.filter(v=>v.lang && v.lang.toLowerCase().replace('_','-').startsWith('en'));
   // 1) 사용자가 직접 고른 음성이 있으면 그대로
   selectedVoice = settings.voiceURI ? (allVoices.find(v=>v.voiceURI===settings.voiceURI) || null) : null;
-  // 2) 없으면 남성 우선 자동 선택(한국어 음성 우선)
+  // 2) 없으면 en-US 남성 우선 자동 선택
   if(!selectedVoice){
-    const pool = (koVoices.length ? koVoices : allVoices).slice();
-    pool.sort((a,b)=>genderScore(b)-genderScore(a));
+    const pool = ((enVoices.length ? enVoices : allVoices)).slice();
+    pool.sort((a,b)=>voiceScore(b)-voiceScore(a));
     selectedVoice = pool[0] || null;
   }
   populateVoiceSelect();
@@ -334,8 +332,8 @@ function loadVoices(){
 function populateVoiceSelect(){
   const sel = document.getElementById('voiceSelect');
   if(!sel) return;
-  const others = allVoices.filter(v=>!koVoices.includes(v));
-  const ordered = koVoices.concat(others);
+  const others = allVoices.filter(v=>!enVoices.includes(v));
+  const ordered = enVoices.concat(others);
   if(!ordered.length){ sel.innerHTML = '<option value="">기기 기본 음성</option>'; return; }
   sel.innerHTML = '';
   ordered.forEach(v=>{
@@ -356,7 +354,7 @@ function speak(text, interrupt=true){
   try{
     if(interrupt) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ko-KR';
+    u.lang = 'en-US';
     if(selectedVoice) u.voice = selectedVoice;
     u.volume = 1.0;
     u.rate = 0.95;  // 살짝 느리게 → 차분하고 부드러운 전달
@@ -517,7 +515,7 @@ const engine = {
       setPhase('1세트', false);
       this.view.mode='count'; this.view.set=1; this.view.count=0;
       renderCount();
-      speak('1세트 시작');
+      speak('Set 1');
       setTimeout(preroll, 800);
     }
   },
@@ -565,7 +563,7 @@ const engine = {
       case 'restStart':
         this.view.mode='rest'; this.view.restEndAt=ev.endAt; this.view.set=ev.next;
         setPhase('휴식', true);
-        speak('휴식');
+        speak('Rest');
         beep(520,0.12,0.25);
         vibrate(60);
         renderRest(this.ex.restSec);
@@ -574,7 +572,7 @@ const engine = {
         speak(numSpeech(ev.num)); tick();
         break;
       case 'setAnnounce':
-        speak(ev.set+'세트 시작');
+        speak('Set '+ev.set);
         break;
       case 'timerTick':
         renderTimer(ev.num*1000); tick();
@@ -690,7 +688,7 @@ function runRoutineStep(){
       // 루틴 전체 완료
       $('#doneTitle').textContent = '루틴 완료! 🎉';
       $('#doneMeta').textContent = '세 가지 운동을 모두 마쳤어요. 수고하셨습니다!';
-      speak('루틴 완료');
+      speak('Routine complete');
       routineActive=false;
       show('done');
     }else{
@@ -702,7 +700,7 @@ function runRoutineStep(){
 function showGate(ex){
   $('#gateName').textContent = ex.emoji+' '+ex.name;
   $('#gateMeta').textContent = ex.desc + ' · ' + ex.est;
-  speak('다음, '+ex.name);
+  speak('Next, '+(ex.voiceName||ex.name));
   show('gate');
 }
 
@@ -730,11 +728,6 @@ function buildCards(){
 /* ---- 설정 토글 ---- */
 $('#btnSettings').addEventListener('click', ()=> $('#settingsPanel').classList.toggle('open'));
 
-$('#segCountMode').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button'); if(!btn) return;
-  settings.countMode = btn.dataset.v;
-  [...e.currentTarget.children].forEach(b=>b.classList.toggle('on', b===btn));
-});
 function bindSwitch(id, key){
   const el = $(id);
   el.addEventListener('click', ()=>{
@@ -756,7 +749,7 @@ $('#voiceSelect').addEventListener('change', (e)=>{
 $('#btnTestVoice').addEventListener('click', ()=>{
   unlockAudio();
   const wasOn = settings.voice; settings.voice = true;  // 미리듣기는 항상 재생
-  speak('음성 테스트입니다. 하나, 둘, 셋.', true);
+  speak('Voice test. One, two, three.', true);
   settings.voice = wasOn;
 });
 
