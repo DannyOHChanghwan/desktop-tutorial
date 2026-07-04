@@ -4,6 +4,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
+      - main
       - claude/exercise-routine-webapp-rsh94s
   workflow_dispatch:
 
