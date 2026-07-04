@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f1a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>운동 루틴</title>
+<style>
+  :root{
+    --bg:#0b0f1a;
+    --bg2:#121826;
+    --card:#151c2c;
+    --card2:#1b2436;
+    --line:#26304a;
+    --text:#eef2fb;
+    --muted:#9aa6c2;
+    --accent:#4f7cff;
+    --accent2:#38d9a9;
+    --danger:#ff5c72;
+    --warn:#ffb84d;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%, #16203a 0%, var(--bg) 55%);
+    color:var(--text);
+    -webkit-user-select:none;user-select:none;
+    overflow-x:hidden;
+  }
+  .app{
+    max-width:520px;margin:0 auto;min-height:100dvh;
+    display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  }
+  .screen{display:none;flex:1;flex-direction:column;}
+  .screen.active{display:flex;}
+
+  /* ---------- Home ---------- */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .title{font-size:26px;font-weight:800;letter-spacing:-.5px;}
+  .subtitle{color:var(--muted);font-size:13px;margin:2px 0 18px;}
+  .iconbtn{
+    background:var(--card);border:1px solid var(--line);color:var(--text);
+    width:44px;height:44px;border-radius:14px;font-size:20px;display:flex;align-items:center;justify-content:center;
+  }
+  .iconbtn:active{transform:scale(.96);}
+
+  .card{
+    background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+    border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 4px;font-size:19px;font-weight:800;}
+  .card .meta{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .card .meta b{color:var(--accent2);font-weight:700;}
+  .btn{
+    width:100%;border:none;border-radius:16px;padding:15px 18px;font-size:17px;font-weight:800;
+    color:#fff;background:linear-gradient(135deg,var(--accent),#6b57ff);box-shadow:0 8px 18px rgba(79,124,255,.35);
+  }
+  .btn:active{transform:translateY(1px) scale(.995);}
+  .btn.ghost{background:var(--card2);border:1px solid var(--line);box-shadow:none;color:var(--text);}
+  .btn.green{background:linear-gradient(135deg,var(--accent2),#2bb6d9);box-shadow:0 8px 18px rgba(56,217,169,.3);}
+  .btn.warn{background:linear-gradient(135deg,#ffb84d,#ff8f3d);box-shadow:none;color:#20160a;}
+  .btn.danger{background:linear-gradient(135deg,var(--danger),#ff3d5a);box-shadow:none;}
+  .btn.small{padding:12px;font-size:15px;border-radius:14px;}
+
+  .routine-cta{
+    background:linear-gradient(135deg,#1f2a48,#182038);border:1px solid var(--line);
+    border-radius:20px;padding:16px;margin-bottom:18px;text-align:center;
+  }
+  .routine-cta .lbl{font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .footer-note{color:var(--muted);font-size:12px;text-align:center;margin-top:auto;padding-top:16px;line-height:1.6;}
+
+  /* ---------- Settings ---------- */
+  .settings{display:none;}
+  .settings.open{display:block;}
+  .setrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);}
+  .setrow:last-child{border-bottom:none;}
+  .setrow .k{font-size:15px;font-weight:600;}
+  .setrow .d{font-size:12px;color:var(--muted);margin-top:2px;}
+  .seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:8px 12px;font-size:14px;font-weight:700;}
+  .seg button.on{background:var(--accent);color:#fff;}
+  .switch{width:52px;height:30px;border-radius:20px;background:var(--bg2);border:1px solid var(--line);position:relative;transition:.15s;}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#6b7594;transition:.15s;}
+  .switch.on{background:var(--accent);}
+  .switch.on::after{left:25px;background:#fff;}
+
+  /* ---------- Running view ---------- */
+  .runhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .runname{font-size:18px;font-weight:800;}
+  .phase{
+    align-self:center;margin:4px 0 0;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:800;
+    background:var(--card2);border:1px solid var(--line);color:var(--accent2);
+  }
+  .phase.rest{color:var(--warn);}
+  .bignum-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;}
+  .bignum{
+    font-size:38vw;line-height:.95;font-weight:900;letter-spacing:-4px;
+    font-variant-numeric:tabular-nums;color:var(--text);
+    text-shadow:0 0 40px rgba(79,124,255,.25);
+  }
+  .app{ }
+  .bignum.rest{color:var(--warn);}
+  .bignum.timer{font-size:20vw;letter-spacing:-2px;}
+  @media(min-width:460px){ .bignum{font-size:180px;} .bignum.timer{font-size:96px;} }
+  .setinfo{font-size:20px;font-weight:800;color:var(--muted);}
+  .setinfo b{color:var(--text);}
+  .subcue{font-size:15px;color:var(--muted);min-height:20px;}
+
+  .progress{height:12px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);overflow:hidden;margin:14px 0 16px;}
+  .progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s linear;}
+
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .controls .btn{padding:18px;font-size:18px;}
+  .controls .full{grid-column:1 / -1;}
+
+  /* ---------- Gate / Complete ---------- */
+  .center-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;}
+  .gate-emoji{font-size:64px;}
+  .gate-next{font-size:14px;color:var(--muted);}
+  .gate-name{font-size:30px;font-weight:900;}
+  .gate-meta{color:var(--muted);font-size:14px;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ HOME ============ -->
+  <section id="screen-home" class="screen active">
+    <div class="top">
+      <div>
+        <div class="title">운동 루틴</div>
+      </div>
+      <button class="iconbtn" id="btnSettings" aria-label="설정">⚙️</button>
+    </div>
+    <div class="subtitle">음성 카운팅 · 타이머로 진행하는 오늘의 루틴 · 총 약 25분</div>
+
+    <!-- Settings panel -->
+    <div class="card settings" id="settingsPanel">
+      <div class="setrow">
+        <div>
+          <div class="k">숫자 발음</div>
+          <div class="d">한자어(일·이·삼) / 고유어(하나·둘·셋)</div>
+        </div>
+        <div class="seg" id="segCountMode">
+          <button data-v="sino" class="on">한자어</button>
+          <button data-v="native">고유어</button>
+        </div>
+      </div>
+      <div class="setrow">
+        <div><div class="k">음성 안내</div><div class="d">카운팅·세트 안내 읽어주기</div></div>
+        <div class="switch on" id="swVoice" role="switch" aria-checked="true"></div>
+      </div>
+      <div class="setrow">
+        <div><div class="k">진동 피드백</div><div class="d">세트·휴식 종료 시 진동(지원 기기)</div></div>
+        <div class="switch on" id="swVibrate" role="switch" aria-checked="true"></div>
+      </div>
+      <div class="setrow">
+        <div><div class="k">화면 꺼짐 방지</div><div class="d">운동 중 화면 잠금 방지(지원 브라우저)</div></div>
+        <div class="switch on" id="swWake" role="switch" aria-checked="true"></div>
+      </div>
+    </div>
+
+    <div class="routine-cta">
+      <div class="lbl">세 운동을 순서대로 이어서 진행합니다</div>
+      <button class="btn green" id="btnStartRoutine">🔥 루틴 전체 시작</button>
+    </div>
+
+    <div id="cardList"></div>
+
+    <div class="footer-note">
+      모바일 세로화면 최적화 · 첫 “시작” 탭에서 소리가 켜집니다<br/>
+      데이터는 저장되지 않으며 새로고침 시 초기화됩니다
+    </div>
+  </section>
+
+  <!-- ============ RUNNING ============ -->
+  <section id="screen-run" class="screen">
+    <div class="runhead">
+      <button class="iconbtn" id="btnBack" aria-label="뒤로">✕</button>
+      <div class="runname" id="runName">운동</div>
+      <div style="width:44px" id="routineTag"></div>
+    </div>
+    <div class="phase" id="phaseLabel">준비</div>
+
+    <div class="bignum-wrap">
+      <div class="bignum" id="bigNum">0</div>
+      <div class="setinfo" id="setInfo"></div>
+      <div class="subcue" id="subCue"></div>
+    </div>
+
+    <div class="progress"><i id="progBar"></i></div>
+
+    <div class="controls">
+      <button class="btn warn" id="btnPause">일시정지</button>
+      <button class="btn danger" id="btnStop">정지</button>
+    </div>
+  </section>
+
+  <!-- ============ GATE (between routine exercises) ============ -->
+  <section id="screen-gate" class="screen">
+    <div class="center-screen">
+      <div class="gate-emoji">✅</div>
+      <div class="gate-next">다음 운동</div>
+      <div class="gate-name" id="gateName">—</div>
+      <div class="gate-meta" id="gateMeta"></div>
+      <div style="height:8px"></div>
+      <button class="btn green" id="btnGateStart" style="max-width:320px">시작</button>
+      <button class="btn ghost small" id="btnGateQuit" style="max-width:320px">루틴 종료</button>
+    </div>
+  </section>
+
+  <!-- ============ COMPLETE ============ -->
+  <section id="screen-done" class="screen">
+    <div class="center-screen">
+      <div class="gate-emoji">🎉</div>
+      <div class="gate-name" id="doneTitle">루틴 완료!</div>
+      <div class="gate-meta" id="doneMeta">수고하셨습니다.</div>
+      <div style="height:8px"></div>
+      <button class="btn" id="btnHome" style="max-width:320px">처음으로</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   운동 루틴 모바일 웹앱 (단일 파일 / 외부 라이브러리 없음 / 브라우저 기본 API)
+   - 음성 카운팅(SpeechSynthesis, ko-KR)  : 한자어/고유어 토글
+   - 정확한 타이밍(performance.now 기준)   : setInterval 드리프트 보정
+   - 화면 꺼짐 방지(Screen Wake Lock)
+   - 진동(navigator.vibrate) / 오디오 언락 / 알림 비프
+   - 일시정지·재개·정지 공통 컨트롤 / 상태는 메모리에만 보관
+   ========================================================================= */
+
+/* ---------------------- 운동 정의 ---------------------- */
+const EXERCISES = [
+  {
+    id:'wave', name:'웨이브 베개 이완', emoji:'🌊', type:'timer',
+    durationSec:600, estSec:600, est:'10분',
+    desc:'베개를 이용해 상체의 긴장을 천천히 풀어줍니다.',
+    startMsg:'이완 운동 시작', completeMsg:'이완 운동 완료'
+  },
+  {
+    id:'tmove', name:'T MOVE', emoji:'💪', type:'count',
+    reps:50, sets:4, intervalSec:1, restSec:10, estSec:230, est:'약 3분 50초',
+    desc:'50회 × 4세트 · 세트 사이 10초 휴식',
+    completeMsg:'T MOVE 완료'
+  },
+  {
+    id:'lmove', name:'L MOVE', emoji:'🦵', type:'count',
+    reps:20, sets:20, intervalSec:1.5, restSec:5, estSec:695, est:'약 11분 35초',
+    desc:'20회 × 20세트 · 세트 사이 5초 휴식',
+    completeMsg:'L MOVE 완료'
+  },
+];
+
+/* ---------------------- 설정(메모리 상태) ---------------------- */
+const settings = {
+  countMode:'sino',   // 'sino'(한자어) | 'native'(고유어)
+  voice:true,
+  vibrate:true,
+  wake:true,
+};
+
+/* ---------------------- DOM 헬퍼 ---------------------- */
+const $ = (s)=>document.querySelector(s);
+const screens = {
+  home:$('#screen-home'), run:$('#screen-run'), gate:$('#screen-gate'), done:$('#screen-done')
+};
+function show(name){
+  Object.values(screens).forEach(s=>s.classList.remove('active'));
+  screens[name].classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ---------------------- 숫자 → 한국어 ---------------------- */
+function nativeKorean(n){
+  const ones=['','하나','둘','셋','넷','다섯','여섯','일곱','여덟','아홉'];
+  const tens=['','열','스물','서른','마흔','쉰','예순','일흔','여든','아흔'];
+  if(n<=0) return String(n);
+  if(n<10) return ones[n];
+  if(n<100) return tens[Math.floor(n/10)] + ones[n%10];
+  return String(n);
+}
+// 한자어(sino)는 TTS가 숫자 문자열을 그대로 한자어로 읽어줌
+function numSpeech(n){ return settings.countMode==='native' ? nativeKorean(n) : String(n); }
+
+/* ---------------------- 음성(TTS) ---------------------- */
+let koVoice = null;
+function loadVoices(){
+  if(!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices() || [];
+  koVoice = vs.find(v=>v.lang && v.lang.toLowerCase().replace('_','-').startsWith('ko')) || null;
+}
+if('speechSynthesis' in window){
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+function speak(text, interrupt=true){
+  if(!settings.voice || !('speechSynthesis' in window)) return;
+  try{
+    if(interrupt) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ko-KR';
+    if(koVoice) u.voice = koVoice;
+    u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+    speechSynthesis.speak(u);
+  }catch(e){/* 미지원 시 조용히 무시 */}
+}
+
+/* ---------------------- 오디오(비프) + 언락 ---------------------- */
+let audioCtx = null;
+function unlockAudio(){
+  try{
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(e){}
+  // TTS 워밍업(모바일 최초 상호작용에서 무음 발화)
+  try{
+    if('speechSynthesis' in window){
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0; speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+function beep(freq=880, dur=0.15, vol=0.28, type='sine'){
+  if(!audioCtx) return;
+  try{
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    o.connect(g); g.connect(audioCtx.destination);
+    const t = audioCtx.currentTime;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.02);
+  }catch(e){}
+}
+function chime(){ beep(880,0.15); setTimeout(()=>beep(1174.7,0.18),150); setTimeout(()=>beep(1568,0.28),320); }
+function tick(){ beep(760,0.08,0.22,'triangle'); }
+
+/* ---------------------- 진동 ---------------------- */
+function vibrate(pattern){
+  if(!settings.vibrate) return;
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
+
+/* ---------------------- 화면 꺼짐 방지 ---------------------- */
+let wakeLock = null;
+async function requestWake(){
+  if(!settings.wake) return;
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){/* 미지원/거부 시 무시 */}
+}
+function releaseWake(){
+  try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && engine.running && !engine.paused){
+    requestWake();
+  }
+});
+
+/* ---------------------- 정밀 클록(일시정지 지원) ---------------------- */
+const clock = {
+  t0:0, pausedAccum:0, pausedAt:0, running:false, paused:false,
+  start(){ this.t0=performance.now(); this.pausedAccum=0; this.paused=false; this.running=true; },
+  // 경과 ms (일시정지 구간 제외)
+  now(){
+    if(!this.running) return 0;
+    const extra = this.paused ? (performance.now()-this.pausedAt) : 0;
+    return performance.now() - this.t0 - this.pausedAccum - extra;
+  },
+  pause(){ if(this.running && !this.paused){ this.paused=true; this.pausedAt=performance.now(); } },
+  resume(){ if(this.running && this.paused){ this.pausedAccum += performance.now()-this.pausedAt; this.paused=false; } },
+  stop(){ this.running=false; this.paused=false; }
+};
+
+/* =========================================================================
+   실행 엔진 : timer(카운트다운) / count(세트 카운팅) 공통
+   - 스케줄(events)을 절대시간(ms)으로 만들고, 경과시간과 비교해 발화
+   - 렌더 루프는 경과시간 기준이라 setInterval 오차가 누적되지 않음
+   ========================================================================= */
+const engine = {
+  running:false, paused:false,
+  ex:null, events:[], totalMs:0, idx:0, rafId:null, onDone:null,
+  view:{ mode:'ready', set:1, count:0, restEndAt:0 },
+
+  /* ---- 카운팅 운동 스케줄 생성 (reps/sets/intervalSec/restSec 재사용) ---- */
+  buildCount(ex){
+    const iv = ex.intervalSec*1000, rest = ex.restSec*1000;
+    const events = []; let t = 0;
+    for(let s=1; s<=ex.sets; s++){
+      // 세트 시작 안내: 2세트부터는 직전 휴식의 끝자락(0.7초 전)에 안내 → 숫자와 겹치지 않음
+      if(s>=2) events.push({at:t-700, type:'setAnnounce', set:s});
+      for(let r=1; r<=ex.reps; r++){
+        events.push({at:t, type:'count', num:r, set:s});
+        t += iv;
+      }
+      if(s<ex.sets){
+        events.push({at:t, type:'restStart', set:s, endAt:t+rest, next:s+1});
+        // 휴식 마지막 3·2초 음성/신호(1초는 세트 안내에 양보)
+        const top = Math.min(3, ex.restSec);
+        for(let sec=top; sec>=2; sec--){
+          events.push({at:t + (ex.restSec-sec)*1000, type:'restVoice', num:sec});
+        }
+        t += rest;
+      }
+    }
+    events.push({at:t, type:'done'});
+    events.sort((a,b)=>a.at-b.at);
+    return {events, totalMs:t};
+  },
+
+  buildTimer(ex){
+    const dur = ex.durationSec*1000;
+    const events = [];
+    // 마지막 3초 신호음
+    for(let sec=3; sec>=1; sec--) events.push({at:dur - sec*1000, type:'timerTick', num:sec});
+    events.push({at:dur, type:'done'});
+    events.sort((a,b)=>a.at-b.at);
+    return {events, totalMs:dur};
+  },
+
+  start(ex, onDone){
+    this.stopInternal();
+    this.ex = ex; this.onDone = onDone; this.idx = 0;
+    const built = (ex.type==='timer') ? this.buildTimer(ex) : this.buildCount(ex);
+    this.events = built.events; this.totalMs = built.totalMs;
+    this.running = true; this.paused = false;
+    this.view = { mode: ex.type==='timer' ? 'timer' : 'ready', set:1, count:0, restEndAt:0 };
+
+    // UI 초기화
+    $('#runName').textContent = ex.name;
+    $('#btnPause').textContent = '일시정지';
+    $('#btnPause').classList.remove('green'); $('#btnPause').classList.add('warn');
+    show('run');
+
+    requestWake();
+
+    // 프리롤: 첫 안내 후 클록 시작(타이밍 그리드 밖의 도입부)
+    const preroll = ()=>{
+      clock.start();
+      this.loop();
+    };
+    if(ex.type==='timer'){
+      setPhase('진행 중', false);
+      renderTimer(this.totalMs);
+      speak(ex.startMsg || '시작');
+      setTimeout(preroll, 700);
+    }else{
+      setPhase('1세트', false);
+      this.view.mode='count'; this.view.set=1; this.view.count=0;
+      renderCount();
+      speak('1세트 시작');
+      setTimeout(preroll, 800);
+    }
+  },
+
+  loop(){
+    const step = ()=>{
+      if(!this.running){ return; }
+      if(this.paused){ this.rafId = requestAnimationFrame(step); return; }
+      const el = clock.now();
+
+      // 도래한 이벤트 처리
+      while(this.idx < this.events.length && el >= this.events[this.idx].at){
+        this.fire(this.events[this.idx]);
+        this.idx++;
+      }
+      // 렌더
+      if(this.ex.type==='timer'){
+        renderTimer(Math.max(0, this.totalMs - el));
+        setProgress(el / this.totalMs);
+      }else{
+        if(this.view.mode==='rest'){
+          const remain = Math.max(0, Math.ceil((this.view.restEndAt - el)/1000));
+          renderRest(remain);
+        }
+        setProgress(el / this.totalMs);
+      }
+
+      if(this.running && this.idx < this.events.length){
+        this.rafId = requestAnimationFrame(step);
+      }else if(this.running){
+        // done 이벤트가 마지막 → 이미 처리됨
+      }
+    };
+    this.rafId = requestAnimationFrame(step);
+  },
+
+  fire(ev){
+    switch(ev.type){
+      case 'count':
+        this.view.mode='count'; this.view.set=ev.set; this.view.count=ev.num;
+        setPhase(ev.set+'세트', false);
+        renderCount();
+        speak(numSpeech(ev.num));
+        break;
+      case 'restStart':
+        this.view.mode='rest'; this.view.restEndAt=ev.endAt; this.view.set=ev.next;
+        setPhase('휴식', true);
+        speak('휴식');
+        beep(520,0.12,0.25);
+        vibrate(60);
+        renderRest(this.ex.restSec);
+        break;
+      case 'restVoice':
+        speak(numSpeech(ev.num)); tick();
+        break;
+      case 'setAnnounce':
+        speak(ev.set+'세트 시작');
+        break;
+      case 'timerTick':
+        renderTimer(ev.num*1000); tick();
+        break;
+      case 'done':
+        this.finish();
+        break;
+    }
+  },
+
+  finish(){
+    const ex = this.ex;
+    this.running=false; clock.stop();
+    if(this.rafId) cancelAnimationFrame(this.rafId);
+    setProgress(1);
+    if(ex.type==='timer'){ renderTimer(0); }
+    setPhase('완료', false);
+    chime();
+    speak(ex.completeMsg || '완료', true);
+    vibrate([120,60,120]);
+    releaseWake();
+    const cb = this.onDone; this.onDone=null;
+    if(cb) setTimeout(()=>cb(), 300);
+  },
+
+  pause(){
+    if(!this.running || this.paused) return;
+    this.paused=true; clock.pause();
+    try{ speechSynthesis.cancel(); }catch(e){}
+    releaseWake();
+    setPhase('일시정지', false);
+  },
+  resume(){
+    if(!this.running || !this.paused) return;
+    this.paused=false; clock.resume();
+    requestWake();
+    if(this.ex.type!=='timer'){
+      setPhase(this.view.mode==='rest' ? '휴식' : (this.view.set+'세트'), this.view.mode==='rest');
+    }else setPhase('진행 중', false);
+  },
+  stopInternal(){
+    this.running=false; this.paused=false;
+    if(this.rafId) cancelAnimationFrame(this.rafId);
+    clock.stop();
+    try{ speechSynthesis.cancel(); }catch(e){}
+    releaseWake();
+  },
+  abort(){
+    this.onDone=null;
+    this.stopInternal();
+  }
+};
+
+/* ---------------------- 렌더 ---------------------- */
+function setPhase(text, isRest){
+  const el = $('#phaseLabel');
+  el.textContent = text;
+  el.classList.toggle('rest', !!isRest);
+}
+function setProgress(ratio){
+  ratio = Math.max(0, Math.min(1, ratio||0));
+  $('#progBar').style.width = (ratio*100).toFixed(1)+'%';
+}
+function renderCount(){
+  const b=$('#bigNum'); b.textContent = engine.view.count; b.className='bignum';
+  $('#setInfo').innerHTML = '세트 <b>'+engine.view.set+'</b> / '+engine.ex.sets;
+  $('#subCue').textContent = engine.ex.reps+'회 반복';
+}
+function renderRest(remain){
+  const b=$('#bigNum'); b.textContent = remain; b.className='bignum rest';
+  $('#setInfo').innerHTML = '다음 · 세트 <b>'+engine.view.set+'</b> / '+engine.ex.sets;
+  $('#subCue').textContent = '휴식 중 · 잠시 쉬세요';
+}
+function fmtTime(ms){
+  const total = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(total/60), s = total%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function renderTimer(ms){
+  const b=$('#bigNum'); b.textContent = fmtTime(ms); b.className='bignum timer';
+  $('#setInfo').textContent='';
+  $('#subCue').textContent = engine.ex ? engine.ex.desc : '';
+}
+
+/* =========================================================================
+   루틴/네비게이션 컨트롤
+   ========================================================================= */
+let routineActive = false;   // 전체 루틴 진행 중 여부
+let routineIndex = 0;        // 현재 루틴 운동 인덱스
+
+function startSingle(ex){
+  routineActive = false;
+  $('#routineTag').textContent='';
+  engine.start(ex, ()=>{
+    // 개별 운동 완료 → 완료 화면
+    $('#doneTitle').textContent = ex.name + ' 완료!';
+    $('#doneMeta').textContent = '수고하셨습니다. 👏';
+    show('done');
+  });
+}
+
+function startRoutine(){
+  routineActive = true;
+  routineIndex = 0;
+  runRoutineStep();
+}
+function runRoutineStep(){
+  const ex = EXERCISES[routineIndex];
+  $('#routineTag').innerHTML = '<span style="font-size:12px;color:var(--muted)">'+(routineIndex+1)+'/'+EXERCISES.length+'</span>';
+  engine.start(ex, ()=>{
+    routineIndex++;
+    if(routineIndex >= EXERCISES.length){
+      // 루틴 전체 완료
+      $('#doneTitle').textContent = '루틴 완료! 🎉';
+      $('#doneMeta').textContent = '세 가지 운동을 모두 마쳤어요. 수고하셨습니다!';
+      speak('루틴 완료');
+      routineActive=false;
+      show('done');
+    }else{
+      // 다음 운동 게이트(오디오 정책상 탭 1회 받기)
+      showGate(EXERCISES[routineIndex]);
+    }
+  });
+}
+function showGate(ex){
+  $('#gateName').textContent = ex.emoji+' '+ex.name;
+  $('#gateMeta').textContent = ex.desc + ' · ' + ex.est;
+  speak('다음, '+ex.name);
+  show('gate');
+}
+
+/* =========================================================================
+   홈 화면 카드 생성 + 이벤트 바인딩
+   ========================================================================= */
+function buildCards(){
+  const wrap = $('#cardList');
+  wrap.innerHTML='';
+  EXERCISES.forEach((ex, i)=>{
+    const c = document.createElement('div');
+    c.className='card';
+    c.innerHTML =
+      '<h3>'+ex.emoji+' '+(i+1)+'. '+ex.name+'</h3>'+
+      '<div class="meta">'+ex.desc+' · 예상 <b>'+ex.est+'</b></div>'+
+      '<button class="btn" data-i="'+i+'">시작</button>';
+    c.querySelector('button').addEventListener('click', ()=>{
+      unlockAudio();
+      startSingle(ex);
+    });
+    wrap.appendChild(c);
+  });
+}
+
+/* ---- 설정 토글 ---- */
+$('#btnSettings').addEventListener('click', ()=> $('#settingsPanel').classList.toggle('open'));
+
+$('#segCountMode').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  settings.countMode = btn.dataset.v;
+  [...e.currentTarget.children].forEach(b=>b.classList.toggle('on', b===btn));
+});
+function bindSwitch(id, key){
+  const el = $(id);
+  el.addEventListener('click', ()=>{
+    settings[key] = !settings[key];
+    el.classList.toggle('on', settings[key]);
+    el.setAttribute('aria-checked', settings[key]);
+    if(key==='voice' && !settings[key]){ try{speechSynthesis.cancel();}catch(e){} }
+  });
+}
+bindSwitch('#swVoice','voice');
+bindSwitch('#swVibrate','vibrate');
+bindSwitch('#swWake','wake');
+
+/* ---- 루틴 시작 ---- */
+$('#btnStartRoutine').addEventListener('click', ()=>{ unlockAudio(); startRoutine(); });
+
+/* ---- 실행 화면 컨트롤 ---- */
+$('#btnPause').addEventListener('click', ()=>{
+  if(!engine.running) return;
+  if(engine.paused){
+    engine.resume();
+    $('#btnPause').textContent='일시정지';
+    $('#btnPause').classList.remove('green'); $('#btnPause').classList.add('warn');
+  }else{
+    engine.pause();
+    $('#btnPause').textContent='재개';
+    $('#btnPause').classList.remove('warn'); $('#btnPause').classList.add('green');
+  }
+});
+function stopAndHome(){
+  engine.abort();
+  routineActive=false;
+  show('home');
+}
+$('#btnStop').addEventListener('click', stopAndHome);
+$('#btnBack').addEventListener('click', stopAndHome);
+
+/* ---- 게이트(다음 운동) ---- */
+$('#btnGateStart').addEventListener('click', ()=>{ unlockAudio(); runRoutineStep(); });
+$('#btnGateQuit').addEventListener('click', ()=>{ routineActive=false; show('home'); });
+
+/* ---- 완료 화면 ---- */
+$('#btnHome').addEventListener('click', ()=> show('home'));
+
+/* ---------------------- 초기화 ---------------------- */
+buildCards();
+// 진동/웨이크락 미지원 안내(설정 라벨 비활성 표시)
+if(!('vibrate' in navigator)){ $('#swVibrate').style.opacity=.4; }
+if(!('wakeLock' in navigator)){ $('#swWake').style.opacity=.4; }
+</script>
+</body>
+</html>
