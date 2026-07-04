@@ -359,9 +359,10 @@ function speak(text, interrupt=true){
     u.lang = 'ko-KR';
     if(selectedVoice) u.voice = selectedVoice;
     u.volume = 1.0;
-    u.rate = 0.92;  // 살짝 느리게 → 차분하고 부드러운 전달(박보검 톤 지향)
-    // 부드러운 젊은 남성 톤: 과하게 낮추지 않는다. 여성 추정 음성만 살짝 낮춰 남성적으로 보정.
-    u.pitch = (selectedVoice && genderScore(selectedVoice) < 0) ? 0.85 : 1.0;
+    u.rate = 0.95;  // 살짝 느리게 → 차분하고 부드러운 전달
+    // 여성스러운 남성 톤: 남성 음성은 음높이를 살짝 올려 가볍고 부드럽게,
+    // 남성 음성이 없어 여성 음성을 쓸 땐 과하게 낮추지 않아 중성적으로 부드럽게.
+    u.pitch = (selectedVoice && genderScore(selectedVoice) < 0) ? 0.92 : 1.15;
     speechSynthesis.speak(u);
   }catch(e){/* 미지원 시 조용히 무시 */}
 }
