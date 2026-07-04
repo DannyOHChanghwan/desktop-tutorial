@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+# 현재 개발 브랜치에서 바로 정적 사이트를 GitHub Pages로 배포한다.
+on:
+  push:
+    branches:
+      - claude/exercise-routine-webapp-rsh94s
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write        # Pages 활성화 + 배포 권한
+  id-token: write     # deploy-pages OIDC
+
+# 동시 배포 방지(마지막 것만 반영)
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true   # Pages가 꺼져 있으면 자동으로 켠다
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'          # index.html이 리포지토리 루트에 있음
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
