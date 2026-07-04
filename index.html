@@ -154,6 +154,13 @@
           <button data-v="native">고유어</button>
         </div>
       </div>
+      <div class="setrow" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div><div class="k">목소리</div><div class="d">설치된 음성 중 선택 · 남성 우선</div></div>
+          <button class="btn green small" id="btnTestVoice" style="width:auto;padding:8px 14px;">🔊 테스트</button>
+        </div>
+        <select id="voiceSelect" style="width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;font-size:14px;"></select>
+      </div>
       <div class="setrow">
         <div><div class="k">음성 안내</div><div class="d">카운팅·세트 안내 읽어주기</div></div>
         <div class="switch on" id="swVoice" role="switch" aria-checked="true"></div>
@@ -269,6 +276,7 @@ const settings = {
   voice:true,
   vibrate:true,
   wake:true,
+  voiceURI:'',        // 사용자가 직접 고른 음성(비어 있으면 남성 우선 자동 선택)
 };
 
 /* ---------------------- DOM 헬퍼 ---------------------- */
@@ -295,11 +303,49 @@ function nativeKorean(n){
 function numSpeech(n){ return settings.countMode==='native' ? nativeKorean(n) : String(n); }
 
 /* ---------------------- 음성(TTS) ---------------------- */
-let koVoice = null;
+// Web Speech API에는 성별 정보가 없어 음성 이름으로 추정한다.
+const MALE_HINTS = ['injoon','minjun','minjoon','male','man','남성','남자','민준','현수','기수','gilsu','hyunsu','david','otoya'];
+const FEMALE_HINTS = ['yuna','sunhi','heami','nara','sora','seoyeon','jimin','female','woman','여성','여자','유나','선희','서연','지민','나라'];
+function genderScore(v){
+  const n = ((v.name||'') + ' ' + (v.voiceURI||'')).toLowerCase();
+  if(MALE_HINTS.some(k=>n.includes(k))) return 1;    // 남성 추정
+  if(FEMALE_HINTS.some(k=>n.includes(k))) return -1;  // 여성 추정
+  return 0;                                           // 불명
+}
+
+let allVoices = [];
+let koVoices = [];
+let selectedVoice = null;
+
 function loadVoices(){
   if(!('speechSynthesis' in window)) return;
-  const vs = speechSynthesis.getVoices() || [];
-  koVoice = vs.find(v=>v.lang && v.lang.toLowerCase().replace('_','-').startsWith('ko')) || null;
+  allVoices = speechSynthesis.getVoices() || [];
+  koVoices = allVoices.filter(v=>v.lang && v.lang.toLowerCase().replace('_','-').startsWith('ko'));
+  // 1) 사용자가 직접 고른 음성이 있으면 그대로
+  selectedVoice = settings.voiceURI ? (allVoices.find(v=>v.voiceURI===settings.voiceURI) || null) : null;
+  // 2) 없으면 남성 우선 자동 선택(한국어 음성 우선)
+  if(!selectedVoice){
+    const pool = (koVoices.length ? koVoices : allVoices).slice();
+    pool.sort((a,b)=>genderScore(b)-genderScore(a));
+    selectedVoice = pool[0] || null;
+  }
+  populateVoiceSelect();
+}
+function populateVoiceSelect(){
+  const sel = document.getElementById('voiceSelect');
+  if(!sel) return;
+  const others = allVoices.filter(v=>!koVoices.includes(v));
+  const ordered = koVoices.concat(others);
+  if(!ordered.length){ sel.innerHTML = '<option value="">기기 기본 음성</option>'; return; }
+  sel.innerHTML = '';
+  ordered.forEach(v=>{
+    const o = document.createElement('option');
+    o.value = v.voiceURI;
+    const g = genderScore(v);
+    o.textContent = v.name + ' (' + v.lang + ')' + (g>0?' · 남성':(g<0?' · 여성':''));
+    if(selectedVoice && v.voiceURI===selectedVoice.voiceURI) o.selected = true;
+    sel.appendChild(o);
+  });
 }
 if('speechSynthesis' in window){
   loadVoices();
@@ -311,8 +357,11 @@ function speak(text, interrupt=true){
     if(interrupt) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ko-KR';
-    if(koVoice) u.voice = koVoice;
-    u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+    if(selectedVoice) u.voice = selectedVoice;
+    u.volume = 1.0;
+    u.rate = 0.92;  // 살짝 느리게 → 차분하고 부드러운 전달(박보검 톤 지향)
+    // 부드러운 젊은 남성 톤: 과하게 낮추지 않는다. 여성 추정 음성만 살짝 낮춰 남성적으로 보정.
+    u.pitch = (selectedVoice && genderScore(selectedVoice) < 0) ? 0.85 : 1.0;
     speechSynthesis.speak(u);
   }catch(e){/* 미지원 시 조용히 무시 */}
 }
@@ -697,6 +746,18 @@ function bindSwitch(id, key){
 bindSwitch('#swVoice','voice');
 bindSwitch('#swVibrate','vibrate');
 bindSwitch('#swWake','wake');
+
+/* ---- 목소리 선택 / 테스트 ---- */
+$('#voiceSelect').addEventListener('change', (e)=>{
+  settings.voiceURI = e.target.value;
+  selectedVoice = allVoices.find(v=>v.voiceURI===settings.voiceURI) || selectedVoice;
+});
+$('#btnTestVoice').addEventListener('click', ()=>{
+  unlockAudio();
+  const wasOn = settings.voice; settings.voice = true;  // 미리듣기는 항상 재생
+  speak('음성 테스트입니다. 하나, 둘, 셋.', true);
+  settings.voice = wasOn;
+});
 
 /* ---- 루틴 시작 ---- */
 $('#btnStartRoutine').addEventListener('click', ()=>{ unlockAudio(); startRoutine(); });
