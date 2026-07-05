@@ -140,7 +140,7 @@
       </div>
       <button class="iconbtn" id="btnSettings" aria-label="설정">⚙️</button>
     </div>
-    <div class="subtitle">음성 카운팅 · 타이머로 진행하는 오늘의 루틴 · 총 약 25분</div>
+    <div class="subtitle">음성 카운팅 · 타이머로 진행하는 오늘의 루틴 · 총 약 40분</div>
 
     <!-- Settings panel -->
     <div class="card settings" id="settingsPanel">
@@ -163,10 +163,14 @@
         <div><div class="k">화면 꺼짐 방지</div><div class="d">운동 중 화면 잠금 방지(지원 브라우저)</div></div>
         <div class="switch on" id="swWake" role="switch" aria-checked="true"></div>
       </div>
+      <div class="setrow">
+        <div><div class="k">명상 배경음악</div><div class="d">웨이브 베개 이완 중 잔잔한 음악 재생</div></div>
+        <div class="switch on" id="swMusic" role="switch" aria-checked="true"></div>
+      </div>
     </div>
 
     <div class="routine-cta">
-      <div class="lbl">세 운동을 순서대로 이어서 진행합니다</div>
+      <div class="lbl">다섯 운동을 순서대로 이어서 진행합니다</div>
       <button class="btn green" id="btnStartRoutine">🔥 루틴 전체 시작</button>
     </div>
 
@@ -244,6 +248,8 @@ const EXERCISES = [
     id:'wave', name:'웨이브 베개 이완', voiceName:'Wave pillow relaxation', emoji:'🌊', type:'timer',
     durationSec:600, estSec:600, est:'10분',
     desc:'베개를 이용해 상체의 긴장을 천천히 풀어줍니다.',
+    music:true,            // 잔잔한 명상 배경음악 재생
+    announceEvery:120,     // 2분마다 경과 안내
     startMsg:'Relaxation, start', completeMsg:'Relaxation complete'
   },
   {
@@ -258,6 +264,18 @@ const EXERCISES = [
     desc:'20회 × 20세트 · 세트 사이 5초 휴식',
     completeMsg:'L move complete'
   },
+  {
+    id:'s3', name:'S3', voiceName:'S3', emoji:'🤸', type:'count',
+    reps:20, sets:20, intervalSec:1, restSec:10, estSec:590, est:'약 9분 50초',
+    desc:'20초 × 20세트 · 세트 사이 10초 휴식',
+    completeMsg:'S3 complete'
+  },
+  {
+    id:'s2', name:'S2', voiceName:'S2', emoji:'🧘', type:'timer',
+    durationSec:300, estSec:300, est:'5분',
+    desc:'5분 동안 진행하는 마무리 동작',
+    startMsg:'S2, start', completeMsg:'S2 complete'
+  },
 ];
 
 /* ---------------------- 설정(로컬 저장) ---------------------- */
@@ -266,6 +284,7 @@ const settings = {
   voice:true,
   vibrate:true,
   wake:true,
+  music:true,         // 이완 운동 배경 음악
   voiceURI:'',        // 사용자가 직접 고른 음성(비어 있으면 남성 우선 자동 선택)
 };
 
@@ -278,7 +297,7 @@ function loadSettings(){
     if(!raw) return;
     const saved = JSON.parse(raw);
     if(saved && typeof saved === 'object'){
-      ['voice','vibrate','wake','voiceURI'].forEach(k=>{
+      ['voice','vibrate','wake','music','voiceURI'].forEach(k=>{
         if(k in saved) settings[k] = saved[k];
       });
     }
@@ -287,7 +306,8 @@ function loadSettings(){
 function saveSettings(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      voice:settings.voice, vibrate:settings.vibrate, wake:settings.wake, voiceURI:settings.voiceURI
+      voice:settings.voice, vibrate:settings.vibrate, wake:settings.wake,
+      music:settings.music, voiceURI:settings.voiceURI
     }));
   }catch(e){/* 무시 */}
 }
@@ -423,6 +443,80 @@ function beep(freq=880, dur=0.15, vol=0.28, type='sine'){
 function chime(){ beep(880,0.15); setTimeout(()=>beep(1174.7,0.18),150); setTimeout(()=>beep(1568,0.28),320); }
 function tick(){ beep(760,0.08,0.22,'triangle'); }
 
+/* ---------------------- 명상 배경음악(Web Audio 실시간 생성) ----------------------
+   외부 파일 없이 잔잔한 앰비언트 패드(A 마이너 계열 드론) + 은은한 벨 사운드를
+   생성한다. 볼륨을 낮게 유지해 음성 안내를 가리지 않는다. */
+const ambient = {
+  playing:false, master:null, nodes:[], timers:[],
+  start(){
+    if(!audioCtx || this.playing) return;
+    this.playing = true;
+    const now = audioCtx.currentTime;
+    // 마스터 게인 + 부드러운 페이드인
+    this.master = audioCtx.createGain();
+    this.master.gain.setValueAtTime(0.0001, now);
+    this.master.gain.linearRampToValueAtTime(0.12, now + 3);
+    // 잔향 느낌(피드백 딜레이)
+    const delay = audioCtx.createDelay(5.0); delay.delayTime.value = 0.45;
+    const fb = audioCtx.createGain(); fb.gain.value = 0.35;
+    const wet = audioCtx.createGain(); wet.gain.value = 0.3;
+    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+    this.master.connect(lp); lp.connect(audioCtx.destination);
+    this.master.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(audioCtx.destination);
+    // 패드 코드 (A2, E3, A3, C4)
+    [110, 164.81, 220, 261.63].forEach((f, i)=>{
+      const o = audioCtx.createOscillator();
+      o.type = (i % 2) ? 'sine' : 'triangle';
+      o.frequency.value = f; o.detune.value = (i - 1.5) * 4;
+      const g = audioCtx.createGain(); g.gain.value = 0.08;
+      o.connect(g); g.connect(this.master);
+      // 숨쉬듯 느린 진폭 흔들림(LFO)
+      const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.05 + i * 0.012;
+      const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.05;
+      lfo.connect(lfoGain); lfoGain.connect(g.gain);
+      o.start(now); lfo.start(now);
+      this.nodes.push(o, lfo);
+    });
+    this._scheduleBell();
+  },
+  _scheduleBell(){
+    const notes = [523.25, 587.33, 659.25, 783.99, 880]; // C5 D5 E5 G5 A5 (펜타토닉)
+    const play = ()=>{
+      if(!this.playing || !audioCtx || !this.master) return;
+      const f = notes[Math.floor(Math.random() * notes.length)];
+      const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      const g = audioCtx.createGain();
+      const t = audioCtx.currentTime;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.08, t + 0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
+      o.connect(g); g.connect(this.master);
+      o.start(t); o.stop(t + 3.6);
+      this.timers.push(setTimeout(play, 4000 + Math.random() * 4000));
+    };
+    this.timers.push(setTimeout(play, 2500));
+  },
+  stop(){
+    if(!this.playing) return;
+    this.playing = false;
+    this.timers.forEach(clearTimeout); this.timers = [];
+    const master = this.master; const nodes = this.nodes.slice();
+    this.master = null; this.nodes = [];
+    try{
+      if(master && audioCtx){
+        const now = audioCtx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(0.0001, now + 1.2);
+      }
+    }catch(e){}
+    setTimeout(()=>{
+      nodes.forEach(n=>{ try{ n.stop(); }catch(e){} });
+      try{ if(master) master.disconnect(); }catch(e){}
+    }, 1400);
+  }
+};
+
 /* ---------------------- 진동 ---------------------- */
 function vibrate(pattern){
   if(!settings.vibrate) return;
@@ -502,6 +596,12 @@ const engine = {
   buildTimer(ex){
     const dur = ex.durationSec*1000;
     const events = [];
+    // N초마다 경과 안내(예: 2분마다)
+    if(ex.announceEvery){
+      for(let s=ex.announceEvery; s*1000 < dur; s+=ex.announceEvery){
+        events.push({at:s*1000, type:'elapsed', sec:s});
+      }
+    }
     // 마지막 3초 신호음
     for(let sec=3; sec>=1; sec--) events.push({at:dur - sec*1000, type:'timerTick', num:sec});
     events.push({at:dur, type:'done'});
@@ -534,6 +634,7 @@ const engine = {
       setPhase('진행 중', false);
       renderTimer(this.totalMs);
       speak(ex.startMsg || '시작');
+      if(ex.music && settings.music) ambient.start();
       setTimeout(preroll, 700);
     }else{
       setPhase('1세트', false);
@@ -598,6 +699,9 @@ const engine = {
       case 'setAnnounce':
         speak('Set '+ev.set);
         break;
+      case 'elapsed':
+        speak(String(ev.sec/60) + (ev.sec/60===1 ? ' minute' : ' minutes'));
+        break;
       case 'timerTick':
         renderTimer(ev.num*1000); tick();
         break;
@@ -611,6 +715,7 @@ const engine = {
     const ex = this.ex;
     this.running=false; clock.stop();
     if(this.rafId) cancelAnimationFrame(this.rafId);
+    ambient.stop();
     setProgress(1);
     if(ex.type==='timer'){ renderTimer(0); }
     setPhase('완료', false);
@@ -626,6 +731,7 @@ const engine = {
     if(!this.running || this.paused) return;
     this.paused=true; clock.pause();
     try{ speechSynthesis.cancel(); }catch(e){}
+    ambient.stop();
     releaseWake();
     setPhase('일시정지', false);
   },
@@ -633,6 +739,7 @@ const engine = {
     if(!this.running || !this.paused) return;
     this.paused=false; clock.resume();
     requestWake();
+    if(this.ex.music && settings.music) ambient.start();
     if(this.ex.type!=='timer'){
       setPhase(this.view.mode==='rest' ? '휴식' : (this.view.set+'세트'), this.view.mode==='rest');
     }else setPhase('진행 중', false);
@@ -642,6 +749,7 @@ const engine = {
     if(this.rafId) cancelAnimationFrame(this.rafId);
     clock.stop();
     try{ speechSynthesis.cancel(); }catch(e){}
+    ambient.stop();
     releaseWake();
   },
   abort(){
@@ -765,6 +873,12 @@ function bindSwitch(id, key){
 bindSwitch('#swVoice','voice');
 bindSwitch('#swVibrate','vibrate');
 bindSwitch('#swWake','wake');
+bindSwitch('#swMusic','music');
+// 음악 토글을 실행 중에 끄면 즉시 반영
+$('#swMusic').addEventListener('click', ()=>{
+  if(!settings.music) ambient.stop();
+  else if(engine.running && !engine.paused && engine.ex && engine.ex.music) ambient.start();
+});
 
 /* ---- 목소리 선택 / 테스트 ---- */
 $('#voiceSelect').addEventListener('change', (e)=>{
@@ -813,7 +927,7 @@ $('#btnHome').addEventListener('click', ()=> show('home'));
 /* ---------------------- 초기화 ---------------------- */
 buildCards();
 // 저장된 설정을 스위치 UI에 반영(기본값은 HTML상 'on')
-[['#swVoice','voice'],['#swVibrate','vibrate'],['#swWake','wake']].forEach(([id,key])=>{
+[['#swVoice','voice'],['#swVibrate','vibrate'],['#swWake','wake'],['#swMusic','music']].forEach(([id,key])=>{
   const el = $(id);
   el.classList.toggle('on', settings[key]);
   el.setAttribute('aria-checked', settings[key]);
