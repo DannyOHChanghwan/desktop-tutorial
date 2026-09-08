@@ -1,0 +1,5 @@
+# 실데이터는 저장소에 넣지 않는다 (용량·재배포 문제)
+data/raw/*
+!data/raw/.gitkeep
+__pycache__/
+*.pyc

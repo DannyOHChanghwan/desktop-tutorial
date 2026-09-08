@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제주 숙박 공급 지도</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface-0:#f4f4f1; --surface-1:#fcfcfb; --surface-2:#efefeb;
+  --border:#dedcd4; --border-strong:#c6c4ba;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7c7a73;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100;
+  --pos:#2a78d6; --neg:#e34948; --zero:#c6c4ba;
+  --warn-bg:#fdf3e3; --warn-border:#eda100; --warn-text:#5c4200;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322;
+    --border:#383835; --border-strong:#4c4c48;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+    --pos:#3987e5; --neg:#e66767; --zero:#4c4c48;
+    --warn-bg:#2b2410; --warn-border:#c98500; --warn-text:#f0d9a8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322;
+  --border:#383835; --border-strong:#4c4c48;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+  --pos:#3987e5; --neg:#e66767; --zero:#4c4c48;
+  --warn-bg:#2b2410; --warn-border:#c98500; --warn-text:#f0d9a8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 72px}
+header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+header p{margin:0;color:var(--text-secondary)}
+.banner{margin:18px 0 0;padding:12px 14px;border-radius:10px;
+  background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);font-size:13px}
+.banner b{font-weight:700}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:22px 0}
+.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .k{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.tile .v{font-size:26px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12px;color:var(--text-secondary);margin-top:4px;font-variant-numeric:tabular-nums}
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:18px 18px 12px;margin:18px 0}
+.card h2{margin:0 0 2px;font-size:15px;letter-spacing:-.01em}
+.card .sub{margin:0 0 14px;font-size:12.5px;color:var(--text-muted)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary)}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;z-index:5;
+  background:var(--surface-1);border:1px solid var(--border-strong);border-radius:8px;
+  padding:8px 10px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.16);white-space:nowrap;
+  color:var(--text-primary)}
+.tip .th{font-weight:650;margin-bottom:4px}
+.tip .tr{display:flex;align-items:center;gap:7px;font-variant-numeric:tabular-nums}
+.tip .tr i{width:9px;height:9px;border-radius:2px;flex:none}
+.tip .tr b{margin-left:auto;font-weight:600;padding-left:12px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface-1)}
+th{color:var(--text-secondary);font-weight:600;cursor:pointer;user-select:none;font-size:12px}
+th:hover{color:var(--text-primary)}
+th[aria-sort]:after{content:"";opacity:.5}
+th[aria-sort="descending"]:after{content:" ▼"}
+th[aria-sort="ascending"]:after{content:" ▲"}
+td{font-variant-numeric:tabular-nums;color:var(--text-primary)}
+td.pos{color:var(--pos);font-weight:600}
+td.neg{color:var(--neg);font-weight:600}
+.notes{font-size:12.5px;color:var(--text-muted)}
+.notes li{margin:3px 0}
+footer{margin-top:28px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px}
+.toggle{position:absolute;top:24px;right:20px;background:var(--surface-1);border:1px solid var(--border);
+  color:var(--text-secondary);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<button class="toggle" id="themeBtn" type="button">◐ 테마</button>
+<div class="wrap">
+  <header>
+    <h1>제주 숙박 공급 지도</h1>
+    <p id="subtitle"></p>
+  </header>
+  <div id="banner"></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>월별 영업신고 유효 업소 수</h2>
+    <p class="sub">누적 인허가 − 누적 폐업. 휴업 기간은 원본에 남지 않아 분리하지 않았다.</p>
+    <div class="legend" id="lgTrend"></div>
+    <div class="chart" id="chTrend"></div>
+  </section>
+
+  <section class="card">
+    <h2>읍면동별 영업중 업소 수 <span style="color:var(--text-muted);font-weight:400">상위 20</span></h2>
+    <p class="sub">공급 밀도가 높을수록 경쟁이 치열하다. 막대에 올리면 업종 구성이 보인다.</p>
+    <div class="chart" id="chTop"></div>
+  </section>
+
+  <section class="card">
+    <h2>최근 12개월 순증감</h2>
+    <p class="sub" id="subNet"></p>
+    <div class="legend">
+      <span><i style="background:var(--pos)"></i>순증 (신규 &gt; 폐업)</span>
+      <span><i style="background:var(--neg)"></i>순감 (폐업 &gt; 신규)</span>
+    </div>
+    <div class="chart" id="chNet"></div>
+  </section>
+
+  <section class="card" id="cardSeason" hidden>
+    <h2>수요 계절성</h2>
+    <p class="sub">월별 입도 관광객 기준 지수 (연평균 = 100)</p>
+    <div class="chart" id="chSeason"></div>
+  </section>
+
+  <section class="card">
+    <h2>읍면동 전체 표</h2>
+    <p class="sub">머리글을 눌러 정렬. 이탈률 = 최근 12개월 폐업 ÷ (현재 영업중 + 최근 12개월 폐업)</p>
+    <div class="tbl-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>데이터 적재 로그</h2>
+    <ul class="notes" id="notes"></ul>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script id="payload" type="application/json">/*__DATA__*/</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("payload").textContent);
+const SERIES_VARS = ["--series-1","--series-2","--series-3","--series-4"];
+const fmt = n => (n ?? 0).toLocaleString("ko-KR");
+const signed = n => (n > 0 ? "+" : "") + fmt(n);
+const cssVar = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+/* ---------------------------------------------------------------- 테마 */
+const btn = document.getElementById("themeBtn");
+btn.addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const next = cur ? (cur === "dark" ? "light" : "dark") : (sysDark ? "light" : "dark");
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("jejustr-theme", next); } catch (e) {}
+  renderAll();
+});
+try {
+  const saved = localStorage.getItem("jejustr-theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+} catch (e) {}
+
+/* ---------------------------------------------------------------- SVG 유틸 */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function mount(host, height) {
+  host.innerHTML = "";
+  const w = Math.max(host.clientWidth || 640, 320);
+  const svg = el("svg", { viewBox: `0 0 ${w} ${height}`, height, role: "img" }, host);
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  host.appendChild(tip);
+  return { svg, w, h: height, tip };
+}
+function showTip(host, tip, x, y, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = "1";
+  const bw = tip.offsetWidth, bh = tip.offsetHeight;
+  let left = x + 14;
+  if (left + bw > host.clientWidth) left = Math.max(0, x - bw - 14);
+  tip.style.left = left + "px";
+  tip.style.top = Math.max(0, y - bh - 10) + "px";
+}
+const hideTip = tip => { tip.style.opacity = "0"; };
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v / mag * 2) / 2 * mag;
+}
+
+/* ---------------------------------------------------------------- 타일 */
+function renderTiles() {
+  const s = DATA.summary;
+  const items = [
+    { k: "현재 영업중", v: fmt(s.active), s: `휴업 ${fmt(s.dormant)} · 누적 폐업 ${fmt(s.closed)}` },
+    { k: "최근 12개월 신규", v: fmt(s.new_12m), s: `${DATA.meta.window[0]} ~ ${DATA.meta.window[1]}` },
+    { k: "최근 12개월 폐업", v: fmt(s.closed_12m), s: `순증감 ${signed(s.net_12m)}` },
+    { k: "영업중 중위 업력", v: s.median_tenure != null ? s.median_tenure + "년" : "—",
+      s: `읍면동 ${fmt(DATA.regions.length)}곳` },
+  ];
+  document.getElementById("tiles").innerHTML = items.map(i =>
+    `<div class="tile"><div class="k">${i.k}</div><div class="v">${i.v}</div><div class="s">${i.s}</div></div>`
+  ).join("");
+}
+
+/* ---------------------------------------------------------------- 추이 라인 */
+function renderTrend() {
+  const host = document.getElementById("chTrend");
+  const months = DATA.series.months;
+  const names = Object.keys(DATA.series.byService);
+  if (!months.length || !names.length) { host.innerHTML = '<p class="notes">데이터 없음</p>'; return; }
+
+  const colors = {};
+  names.forEach((n, i) => { colors[n] = cssVar(SERIES_VARS[i % SERIES_VARS.length]); });
+  document.getElementById("lgTrend").innerHTML = names.map(n =>
+    `<span><i style="background:${colors[n]}"></i>${n}</span>`).join("");
+
+  const { svg, w, h, tip } = mount(host, 300);
+  /* 직접 라벨은 한글 업종명이 들어가 폭이 크다. 좁은 화면에서는 접고 범례+표로 대체한다. */
+  const withLabels = w >= 640;
+  const m = { t: 14, r: withLabels ? 118 : 16, b: 26, l: 46 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b;
+  const maxV = niceMax(Math.max(...names.flatMap(n => DATA.series.byService[n])));
+  const X = i => m.l + (months.length === 1 ? pw / 2 : (i / (months.length - 1)) * pw);
+  const Y = v => m.t + ph - (v / maxV) * ph;
+
+  const ink2 = cssVar("--text-secondary"), inkM = cssVar("--text-muted"), bd = cssVar("--border");
+  for (let g = 0; g <= 4; g++) {
+    const v = maxV * g / 4, y = Y(v);
+    el("line", { x1: m.l, x2: m.l + pw, y1: y, y2: y, stroke: bd, "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 8, y: y + 4, "text-anchor": "end", "font-size": 11, fill: inkM }, svg)
+      .textContent = fmt(Math.round(v));
+  }
+  /* 눈금은 폭에 맞춰 솎고, 마지막 눈금과 겹치는 것은 버린다. */
+  const maxTicks = Math.max(2, Math.floor(pw / 92));
+  const tickEvery = Math.max(1, Math.ceil((months.length - 1) / maxTicks));
+  const lastX = X(months.length - 1);
+  months.forEach((mo, i) => {
+    const isLast = i === months.length - 1;
+    if (!isLast && (i % tickEvery || lastX - X(i) < 56)) return;
+    el("text", { x: X(i), y: h - 6, "text-anchor": isLast ? "end" : "middle",
+      "font-size": 11, fill: inkM }, svg).textContent = mo;
+  });
+
+  names.forEach(n => {
+    const pts = DATA.series.byService[n].map((v, i) => `${X(i)},${Y(v)}`).join(" ");
+    el("polyline", { points: pts, fill: "none", stroke: colors[n], "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  });
+
+  /* 직접 라벨 — 라이트 모드 대비 경고에 대한 relief */
+  if (withLabels) {
+  const labels = names.map(n => {
+    const arr = DATA.series.byService[n];
+    return { n, y: Y(arr[arr.length - 1]), v: arr[arr.length - 1] };
+  }).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++)
+    if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
+  labels.forEach(l => {
+    el("text", { x: m.l + pw + 8, y: l.y + 4, "font-size": 11.5, fill: ink2 }, svg)
+      .textContent = `${l.n} ${fmt(l.v)}`;
+  });
+  }
+
+  const cross = el("line", { y1: m.t, y2: m.t + ph, stroke: cssVar("--border-strong"),
+    "stroke-width": 1, opacity: 0 }, svg);
+  const dots = names.map(n => el("circle", { r: 4, fill: colors[n],
+    stroke: cssVar("--surface-1"), "stroke-width": 2, opacity: 0 }, svg));
+  const hit = el("rect", { x: m.l, y: m.t, width: pw, height: ph, fill: "transparent" }, svg);
+
+  hit.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) * (w / r.width);
+    const i = Math.max(0, Math.min(months.length - 1,
+      Math.round(((px - m.l) / pw) * (months.length - 1))));
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 1);
+    names.forEach((n, k) => {
+      dots[k].setAttribute("cx", X(i));
+      dots[k].setAttribute("cy", Y(DATA.series.byService[n][i]));
+      dots[k].setAttribute("opacity", 1);
+    });
+    const rows = names.map(n =>
+      `<div class="tr"><i style="background:${colors[n]}"></i>${n}<b>${fmt(DATA.series.byService[n][i])}</b></div>`
+    ).join("");
+    const total = names.reduce((a, n) => a + DATA.series.byService[n][i], 0);
+    showTip(host, tip, X(i) * (host.clientWidth / w),
+      m.t + ph * 0.35, `<div class="th">${months[i]}</div>${rows}
+      <div class="tr" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">합계<b>${fmt(total)}</b></div>`);
+  });
+  hit.addEventListener("pointerleave", () => {
+    cross.setAttribute("opacity", 0);
+    dots.forEach(d => d.setAttribute("opacity", 0));
+    hideTip(tip);
+  });
+}
+
+/* ---------------------------------------------------------------- 상위 읍면동 */
+function renderTop() {
+  const host = document.getElementById("chTop");
+  const rows = DATA.regions.filter(r => r.emd !== "미상").slice(0, 20);
+  if (!rows.length) { host.innerHTML = '<p class="notes">데이터 없음</p>'; return; }
+  const probe = mount(host, 10);
+  const rowH = 22, m = { t: 6, r: 52, b: 6, l: probe.w >= 560 ? 118 : 84 };
+  const { svg, w, h, tip } = mount(host, m.t + rows.length * rowH + m.b);
+  const pw = w - m.l - m.r;
+  const maxV = Math.max(...rows.map(r => r.active)) || 1;
+  const c1 = cssVar("--series-1"), ink = cssVar("--text-primary"), ink2 = cssVar("--text-secondary");
+
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH, bh = 13;
+    el("text", { x: m.l - 10, y: y + bh, "text-anchor": "end", "font-size": 12, fill: ink2 }, svg)
+      .textContent = r.region;
+    /* 4px 라운드 데이터 엔드 + 막대 사이 2px 서피스 갭(rowH 22 vs bar 13) */
+    el("rect", { x: m.l, y: y + 3, width: Math.max(2, (r.active / maxV) * pw), height: bh,
+      rx: 4, fill: c1 }, svg);
+    el("text", { x: m.l + Math.max(2, (r.active / maxV) * pw) + 8, y: y + bh,
+      "font-size": 11.5, fill: ink }, svg).textContent = fmt(r.active);
+    const hit = el("rect", { x: 0, y: y, width: w, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => {
+      const mix = Object.entries(r.by_service)
+        .map(([k, v]) => `<div class="tr">${k}<b>${fmt(v)}</b></div>`).join("");
+      showTip(host, tip, m.l * (host.clientWidth / w) + 40, y + rowH,
+        `<div class="th">${r.region}</div>${mix}
+         <div class="tr" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">최근 12개월 순증감<b>${signed(r.net_12m)}</b></div>`);
+    });
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 순증감 (다이버징) */
+function renderNet() {
+  const host = document.getElementById("chNet");
+  const pool = DATA.regions.filter(r => r.emd !== "미상" && r.net_12m !== 0);
+  pool.sort((a, b) => b.net_12m - a.net_12m);
+  const rows = pool.length > 16 ? [...pool.slice(0, 8), ...pool.slice(-8)] : pool;
+  document.getElementById("subNet").textContent =
+    `신규 인허가 − 폐업. 순증이 큰 곳은 신규 진입이 몰리는 지역이다. (변동 있는 ${pool.length}곳 중 상하위 표시)`;
+  if (!rows.length) { host.innerHTML = '<p class="notes">최근 12개월 변동 없음</p>'; return; }
+
+  const probe = mount(host, 10);
+  const rowH = 22, m = { t: 6, r: 20, b: 6, l: probe.w >= 560 ? 118 : 84 };
+  const { svg, w, h, tip } = mount(host, m.t + rows.length * rowH + m.b);
+  const pw = w - m.l - m.r;
+  const maxAbs = Math.max(...rows.map(r => Math.abs(r.net_12m))) || 1;
+  const zeroX = m.l + pw / 2, half = pw / 2 - 30;
+  const pos = cssVar("--pos"), neg = cssVar("--neg"), ink = cssVar("--text-primary"), ink2 = cssVar("--text-secondary");
+
+  el("line", { x1: zeroX, x2: zeroX, y1: m.t, y2: h - m.b, stroke: cssVar("--zero"), "stroke-width": 1 }, svg);
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH, bh = 13, len = Math.max(2, Math.abs(r.net_12m) / maxAbs * half);
+    const up = r.net_12m > 0;
+    el("text", { x: m.l - 10, y: y + bh, "text-anchor": "end", "font-size": 12, fill: ink2 }, svg)
+      .textContent = r.region;
+    el("rect", { x: up ? zeroX : zeroX - len, y: y + 3, width: len, height: bh, rx: 4,
+      fill: up ? pos : neg }, svg);
+    el("text", { x: up ? zeroX + len + 8 : zeroX - len - 8, y: y + bh,
+      "text-anchor": up ? "start" : "end", "font-size": 11.5, fill: ink }, svg)
+      .textContent = signed(r.net_12m);
+    const hit = el("rect", { x: 0, y: y, width: w, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => showTip(host, tip,
+      zeroX * (host.clientWidth / w), y + rowH,
+      `<div class="th">${r.region}</div>
+       <div class="tr">신규<b>${fmt(r.new_12m)}</b></div>
+       <div class="tr">폐업<b>${fmt(r.closed_12m)}</b></div>
+       <div class="tr">현재 영업중<b>${fmt(r.active)}</b></div>`));
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 계절성 */
+function renderSeason() {
+  if (!DATA.seasonality) return;
+  document.getElementById("cardSeason").hidden = false;
+  const host = document.getElementById("chSeason");
+  const vals = Array.from({ length: 12 }, (_, i) => DATA.seasonality[String(i + 1)] ?? 100);
+  const { svg, w, h, tip } = mount(host, 220);
+  const m = { t: 14, r: 16, b: 26, l: 40 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b;
+  const lo = Math.min(80, Math.min(...vals) - 5), hi = Math.max(120, Math.max(...vals) + 5);
+  const X = i => m.l + (i / 11) * pw, Y = v => m.t + ph - ((v - lo) / (hi - lo)) * ph;
+  const c = cssVar("--series-3"), inkM = cssVar("--text-muted"), bd = cssVar("--border");
+  [100].concat([lo, hi]).forEach(v => {
+    el("line", { x1: m.l, x2: m.l + pw, y1: Y(v), y2: Y(v),
+      stroke: v === 100 ? cssVar("--border-strong") : bd, "stroke-width": 1,
+      "stroke-dasharray": v === 100 ? "4 3" : "" }, svg);
+    el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: inkM }, svg)
+      .textContent = Math.round(v);
+  });
+  el("polyline", { points: vals.map((v, i) => `${X(i)},${Y(v)}`).join(" "), fill: "none",
+    stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+  vals.forEach((v, i) => {
+    el("circle", { cx: X(i), cy: Y(v), r: 4, fill: c, stroke: cssVar("--surface-1"), "stroke-width": 2 }, svg);
+    el("text", { x: X(i), y: h - 6, "text-anchor": "middle", "font-size": 11, fill: inkM }, svg)
+      .textContent = (i + 1) + "월";
+    const hit = el("circle", { cx: X(i), cy: Y(v), r: 12, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => showTip(host, tip,
+      X(i) * (host.clientWidth / w), Y(v), `<div class="th">${i + 1}월</div><div class="tr">지수<b>${v}</b></div>`));
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 표 */
+const COLS = [
+  { k: "region", t: "읍면동", num: false },
+  { k: "active", t: "영업중" },
+  { k: "dormant", t: "휴업" },
+  { k: "new_12m", t: "신규 12M" },
+  { k: "closed_12m", t: "폐업 12M" },
+  { k: "net_12m", t: "순증감", sign: true },
+  { k: "churn_12m", t: "이탈률 %" },
+  { k: "median_tenure", t: "중위 업력" },
+  { k: "closed_total", t: "누적 폐업" },
+];
+let sortKey = "active", sortDir = -1;
+function renderTable() {
+  const thead = document.querySelector("#tbl thead");
+  thead.innerHTML = "<tr>" + COLS.map(c =>
+    `<th data-k="${c.k}"${c.k === sortKey ? ` aria-sort="${sortDir < 0 ? "descending" : "ascending"}"` : ""}>${c.t}</th>`
+  ).join("") + "</tr>";
+  thead.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    if (k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = k === "region" ? 1 : -1; }
+    renderTable();
+  }));
+  const rows = [...DATA.regions].sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (typeof x === "string" || typeof y === "string")
+      return String(x ?? "").localeCompare(String(y ?? ""), "ko") * sortDir;
+    return ((x ?? -1) - (y ?? -1)) * sortDir;
+  });
+  document.querySelector("#tbl tbody").innerHTML = rows.map(r => "<tr>" + COLS.map(c => {
+    const v = r[c.k];
+    if (!c.sign) return `<td>${c.k === "region" ? v : (v == null ? "—" : fmt(v))}</td>`;
+    return `<td class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${signed(v)}</td>`;
+  }).join("") + "</tr>").join("");
+}
+
+/* ---------------------------------------------------------------- 정적 영역 */
+function renderStatic() {
+  const meta = DATA.meta, s = DATA.summary;
+  document.getElementById("subtitle").textContent =
+    `${meta.until} 기준 · 원천 ${meta.source} · 생성 ${meta.generated}`;
+  document.getElementById("banner").innerHTML = meta.is_sample
+    ? `<div class="banner"><b>⚠ 합성 샘플 데이터입니다.</b> 이 페이지의 모든 숫자는 파이프라인 동작 확인용으로
+       무작위 생성된 가짜 값이며 실제 제주 시장과 아무 관계가 없습니다.
+       실데이터로 바꾸려면 <code>jeju-str/data/raw/</code> 에 인허가 CSV를 넣고 다시 빌드하세요.</div>`
+    : "";
+  document.getElementById("notes").innerHTML =
+    meta.notes.map(n => `<li>${n}</li>`).join("") || "<li>없음</li>";
+  document.getElementById("footer").innerHTML =
+    `업종 구성: ${Object.entries(s.by_service).map(([k, v]) => `${k} ${fmt(v)}`).join(" · ")}<br>
+     시군구: ${Object.entries(s.by_sigungu).map(([k, v]) => `${k} ${fmt(v)}`).join(" · ")}<br>
+     영업신고 유효 업소 수 = 누적 인허가 − 누적 폐업. 인허가일자가 없는 건은 시계열에서 제외된다.`;
+}
+
+/* ---------------------------------------------------------------- 렌더 */
+function renderAll() {
+  renderTiles(); renderTrend(); renderTop(); renderNet(); renderSeason(); renderTable(); renderStatic();
+}
+renderAll();
+let rt;
+addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderAll, 150); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
+</script>
+</body>
+</html>

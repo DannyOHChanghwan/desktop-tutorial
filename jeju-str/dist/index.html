@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제주 숙박 공급 지도</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface-0:#f4f4f1; --surface-1:#fcfcfb; --surface-2:#efefeb;
+  --border:#dedcd4; --border-strong:#c6c4ba;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7c7a73;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100;
+  --pos:#2a78d6; --neg:#e34948; --zero:#c6c4ba;
+  --warn-bg:#fdf3e3; --warn-border:#eda100; --warn-text:#5c4200;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322;
+    --border:#383835; --border-strong:#4c4c48;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+    --pos:#3987e5; --neg:#e66767; --zero:#4c4c48;
+    --warn-bg:#2b2410; --warn-border:#c98500; --warn-text:#f0d9a8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#232322;
+  --border:#383835; --border-strong:#4c4c48;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500;
+  --pos:#3987e5; --neg:#e66767; --zero:#4c4c48;
+  --warn-bg:#2b2410; --warn-border:#c98500; --warn-text:#f0d9a8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 72px}
+header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+header p{margin:0;color:var(--text-secondary)}
+.banner{margin:18px 0 0;padding:12px 14px;border-radius:10px;
+  background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);font-size:13px}
+.banner b{font-weight:700}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:22px 0}
+.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .k{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.tile .v{font-size:26px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12px;color:var(--text-secondary);margin-top:4px;font-variant-numeric:tabular-nums}
+.card{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:18px 18px 12px;margin:18px 0}
+.card h2{margin:0 0 2px;font-size:15px;letter-spacing:-.01em}
+.card .sub{margin:0 0 14px;font-size:12.5px;color:var(--text-muted)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary)}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;z-index:5;
+  background:var(--surface-1);border:1px solid var(--border-strong);border-radius:8px;
+  padding:8px 10px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.16);white-space:nowrap;
+  color:var(--text-primary)}
+.tip .th{font-weight:650;margin-bottom:4px}
+.tip .tr{display:flex;align-items:center;gap:7px;font-variant-numeric:tabular-nums}
+.tip .tr i{width:9px;height:9px;border-radius:2px;flex:none}
+.tip .tr b{margin-left:auto;font-weight:600;padding-left:12px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface-1)}
+th{color:var(--text-secondary);font-weight:600;cursor:pointer;user-select:none;font-size:12px}
+th:hover{color:var(--text-primary)}
+th[aria-sort]:after{content:"";opacity:.5}
+th[aria-sort="descending"]:after{content:" ▼"}
+th[aria-sort="ascending"]:after{content:" ▲"}
+td{font-variant-numeric:tabular-nums;color:var(--text-primary)}
+td.pos{color:var(--pos);font-weight:600}
+td.neg{color:var(--neg);font-weight:600}
+.notes{font-size:12.5px;color:var(--text-muted)}
+.notes li{margin:3px 0}
+footer{margin-top:28px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px}
+.toggle{position:absolute;top:24px;right:20px;background:var(--surface-1);border:1px solid var(--border);
+  color:var(--text-secondary);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<button class="toggle" id="themeBtn" type="button">◐ 테마</button>
+<div class="wrap">
+  <header>
+    <h1>제주 숙박 공급 지도</h1>
+    <p id="subtitle"></p>
+  </header>
+  <div id="banner"></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>월별 영업신고 유효 업소 수</h2>
+    <p class="sub">누적 인허가 − 누적 폐업. 휴업 기간은 원본에 남지 않아 분리하지 않았다.</p>
+    <div class="legend" id="lgTrend"></div>
+    <div class="chart" id="chTrend"></div>
+  </section>
+
+  <section class="card">
+    <h2>읍면동별 영업중 업소 수 <span style="color:var(--text-muted);font-weight:400">상위 20</span></h2>
+    <p class="sub">공급 밀도가 높을수록 경쟁이 치열하다. 막대에 올리면 업종 구성이 보인다.</p>
+    <div class="chart" id="chTop"></div>
+  </section>
+
+  <section class="card">
+    <h2>최근 12개월 순증감</h2>
+    <p class="sub" id="subNet"></p>
+    <div class="legend">
+      <span><i style="background:var(--pos)"></i>순증 (신규 &gt; 폐업)</span>
+      <span><i style="background:var(--neg)"></i>순감 (폐업 &gt; 신규)</span>
+    </div>
+    <div class="chart" id="chNet"></div>
+  </section>
+
+  <section class="card" id="cardSeason" hidden>
+    <h2>수요 계절성</h2>
+    <p class="sub">월별 입도 관광객 기준 지수 (연평균 = 100)</p>
+    <div class="chart" id="chSeason"></div>
+  </section>
+
+  <section class="card">
+    <h2>읍면동 전체 표</h2>
+    <p class="sub">머리글을 눌러 정렬. 이탈률 = 최근 12개월 폐업 ÷ (현재 영업중 + 최근 12개월 폐업)</p>
+    <div class="tbl-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>데이터 적재 로그</h2>
+    <ul class="notes" id="notes"></ul>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script id="payload" type="application/json">{"meta": {"generated": "2026-09-08", "until": "2026-09", "since": "2013-01", "source": "합성 샘플 (가짜)", "is_sample": true, "window": ["2025-10", "2026-09"], "notes": ["SAMPLE_lodging.csv: 1,400행 중 제주 1,400건"]}, "summary": {"total_records": 1400, "active": 954, "dormant": 22, "closed": 424, "by_service": {"농어촌민박": 533, "숙박업": 300, "관광숙박업": 121}, "by_sigungu": {"제주시": 545, "서귀포시": 409}, "new_12m": 125, "closed_12m": 82, "net_12m": 43, "median_tenure": 4.4, "rooms_known": 6345, "window": ["2025-10", "2026-09"]}, "series": {"months": ["2013-01", "2013-02", "2013-03", "2013-04", "2013-05", "2013-06", "2013-07", "2013-08", "2013-09", "2013-10", "2013-11", "2013-12", "2014-01", "2014-02", "2014-03", "2014-04", "2014-05", "2014-06", "2014-07", "2014-08", "2014-09", "2014-10", "2014-11", "2014-12", "2015-01", "2015-02", "2015-03", "2015-04", "2015-05", "2015-06", "2015-07", "2015-08", "2015-09", "2015-10", "2015-11", "2015-12", "2016-01", "2016-02", "2016-03", "2016-04", "2016-05", "2016-06", "2016-07", "2016-08", "2016-09", "2016-10", "2016-11", "2016-12", "2017-01", "2017-02", "2017-03", "2017-04", "2017-05", "2017-06", "2017-07", "2017-08", "2017-09", "2017-10", "2017-11", "2017-12", "2018-01", "2018-02", "2018-03", "2018-04", "2018-05", "2018-06", "2018-07", "2018-08", "2018-09", "2018-10", "2018-11", "2018-12", "2019-01", "2019-02", "2019-03", "2019-04", "2019-05", "2019-06", "2019-07", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02", "2020-03", "2020-04", "2020-05", "2020-06", "2020-07", "2020-08", "2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05", "2021-06", "2021-07", "2021-08", "2021-09", "2021-10", "2021-11", "2021-12", "2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"], "byService": {"관광숙박업": [4, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 7, 8, 8, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 13, 13, 13, 14, 15, 15, 16, 17, 18, 19, 22, 24, 24, 24, 24, 24, 25, 25, 26, 26, 27, 27, 27, 29, 29, 31, 31, 33, 33, 33, 34, 36, 37, 38, 40, 41, 42, 43, 43, 43, 44, 45, 47, 51, 51, 55, 55, 55, 57, 58, 58, 60, 61, 63, 65, 65, 66, 68, 68, 69, 69, 70, 73, 73, 74, 75, 76, 79, 81, 80, 80, 81, 80, 83, 85, 85, 86, 87, 87, 87, 88, 88, 88, 89, 90, 92, 93, 94, 95, 97, 97, 98, 98, 101, 100, 100, 100, 98, 100, 102, 102, 102, 102, 101, 102, 102, 103, 103, 104, 103, 100, 100, 101, 102, 102, 103, 104, 105, 107, 110, 112, 114, 115, 113, 116, 117, 119, 120, 120, 121, 121, 121, 121, 122, 121, 122, 123, 124, 123, 124], "농어촌민박": [33, 33, 34, 36, 37, 39, 42, 43, 47, 49, 51, 54, 57, 62, 62, 62, 66, 67, 69, 74, 75, 81, 85, 88, 90, 94, 96, 98, 101, 103, 103, 104, 110, 114, 116, 117, 123, 126, 132, 136, 142, 144, 146, 149, 156, 160, 163, 166, 169, 174, 177, 176, 175, 183, 187, 188, 188, 191, 195, 199, 202, 204, 209, 215, 220, 225, 232, 234, 238, 243, 245, 247, 252, 251, 253, 256, 261, 268, 270, 272, 275, 277, 279, 281, 282, 287, 291, 294, 295, 300, 302, 305, 311, 312, 315, 319, 325, 328, 340, 348, 352, 353, 359, 361, 361, 362, 367, 367, 371, 380, 388, 389, 390, 397, 400, 404, 406, 409, 408, 411, 418, 422, 428, 431, 436, 437, 439, 444, 448, 456, 457, 460, 467, 468, 470, 470, 467, 466, 468, 468, 471, 474, 482, 490, 495, 497, 495, 498, 500, 504, 510, 517, 520, 524, 529, 532, 533, 534, 537, 539, 544, 544, 548, 549, 545], "숙박업": [16, 18, 18, 18, 19, 20, 20, 20, 21, 24, 25, 26, 28, 31, 33, 33, 33, 37, 39, 41, 42, 47, 49, 51, 53, 53, 56, 57, 59, 62, 63, 65, 68, 69, 70, 73, 78, 80, 82, 83, 83, 83, 86, 86, 90, 91, 95, 96, 99, 99, 102, 103, 102, 103, 105, 110, 110, 109, 110, 113, 114, 116, 116, 116, 119, 120, 123, 127, 127, 127, 127, 131, 136, 140, 145, 149, 151, 150, 153, 153, 154, 156, 157, 160, 164, 164, 168, 167, 167, 169, 175, 174, 178, 179, 183, 185, 188, 190, 191, 193, 197, 198, 201, 200, 203, 204, 207, 208, 210, 213, 217, 221, 224, 230, 230, 232, 234, 236, 241, 245, 245, 244, 246, 250, 250, 253, 257, 257, 258, 259, 262, 260, 261, 263, 267, 266, 270, 271, 275, 275, 279, 279, 285, 287, 287, 293, 295, 295, 295, 292, 293, 293, 293, 296, 296, 299, 300, 300, 301, 304, 306, 303, 305, 308, 307]}}, "regions": [{"sigungu": "제주시", "emd": "노형동", "region": "제주시 노형동", "active": 64, "dormant": 2, "closed_total": 23, "new_12m": 7, "closed_12m": 2, "net_12m": 5, "churn_12m": 3.0, "rooms": 364, "median_tenure": 4.2, "by_service": {"숙박업": 16, "농어촌민박": 37, "관광숙박업": 11}}, {"sigungu": "서귀포시", "emd": "중문동", "region": "서귀포시 중문동", "active": 60, "dormant": 1, "closed_total": 12, "new_12m": 11, "closed_12m": 1, "net_12m": 10, "churn_12m": 1.6, "rooms": 366, "median_tenure": 3.7, "by_service": {"농어촌민박": 35, "숙박업": 18, "관광숙박업": 7}}, {"sigungu": "제주시", "emd": "애월읍", "region": "제주시 애월읍", "active": 60, "dormant": 3, "closed_total": 22, "new_12m": 12, "closed_12m": 5, "net_12m": 7, "churn_12m": 7.7, "rooms": 419, "median_tenure": 4.0, "by_service": {"숙박업": 19, "농어촌민박": 31, "관광숙박업": 10}}, {"sigungu": "제주시", "emd": "연동", "region": "제주시 연동", "active": 60, "dormant": 1, "closed_total": 28, "new_12m": 6, "closed_12m": 6, "net_12m": 0, "churn_12m": 9.1, "rooms": 422, "median_tenure": 4.5, "by_service": {"농어촌민박": 32, "관광숙박업": 9, "숙박업": 19}}, {"sigungu": "제주시", "emd": "한림읍", "region": "제주시 한림읍", "active": 58, "dormant": 0, "closed_total": 32, "new_12m": 3, "closed_12m": 12, "net_12m": -9, "churn_12m": 17.1, "rooms": 372, "median_tenure": 4.1, "by_service": {"농어촌민박": 33, "관광숙박업": 8, "숙박업": 17}}, {"sigungu": "제주시", "emd": "일도이동", "region": "제주시 일도이동", "active": 57, "dormant": 2, "closed_total": 19, "new_12m": 6, "closed_12m": 4, "net_12m": 2, "churn_12m": 6.6, "rooms": 331, "median_tenure": 4.0, "by_service": {"관광숙박업": 6, "농어촌민박": 39, "숙박업": 12}}, {"sigungu": "제주시", "emd": "이도이동", "region": "제주시 이도이동", "active": 55, "dormant": 1, "closed_total": 28, "new_12m": 6, "closed_12m": 3, "net_12m": 3, "churn_12m": 5.2, "rooms": 385, "median_tenure": 4.4, "by_service": {"농어촌민박": 35, "숙박업": 16, "관광숙박업": 4}}, {"sigungu": "제주시", "emd": "한경면", "region": "제주시 한경면", "active": 49, "dormant": 1, "closed_total": 22, "new_12m": 7, "closed_12m": 5, "net_12m": 2, "churn_12m": 9.3, "rooms": 350, "median_tenure": 3.3, "by_service": {"농어촌민박": 25, "숙박업": 20, "관광숙박업": 4}}, {"sigungu": "서귀포시", "emd": "남원읍", "region": "서귀포시 남원읍", "active": 48, "dormant": 1, "closed_total": 23, "new_12m": 7, "closed_12m": 8, "net_12m": -1, "churn_12m": 14.3, "rooms": 330, "median_tenure": 5.0, "by_service": {"숙박업": 18, "농어촌민박": 22, "관광숙박업": 8}}, {"sigungu": "서귀포시", "emd": "대정읍", "region": "서귀포시 대정읍", "active": 48, "dormant": 1, "closed_total": 22, "new_12m": 5, "closed_12m": 3, "net_12m": 2, "churn_12m": 5.9, "rooms": 332, "median_tenure": 4.0, "by_service": {"관광숙박업": 3, "숙박업": 13, "농어촌민박": 32}}, {"sigungu": "제주시", "emd": "조천읍", "region": "제주시 조천읍", "active": 48, "dormant": 2, "closed_total": 19, "new_12m": 5, "closed_12m": 2, "net_12m": 3, "churn_12m": 4.0, "rooms": 341, "median_tenure": 5.5, "by_service": {"농어촌민박": 26, "숙박업": 15, "관광숙박업": 7}}, {"sigungu": "제주시", "emd": "구좌읍", "region": "제주시 구좌읍", "active": 47, "dormant": 1, "closed_total": 29, "new_12m": 8, "closed_12m": 7, "net_12m": 1, "churn_12m": 13.0, "rooms": 342, "median_tenure": 4.3, "by_service": {"관광숙박업": 8, "숙박업": 18, "농어촌민박": 21}}, {"sigungu": "제주시", "emd": "삼양동", "region": "제주시 삼양동", "active": 47, "dormant": 1, "closed_total": 22, "new_12m": 4, "closed_12m": 2, "net_12m": 2, "churn_12m": 4.1, "rooms": 334, "median_tenure": 5.5, "by_service": {"농어촌민박": 29, "숙박업": 15, "관광숙박업": 3}}, {"sigungu": "서귀포시", "emd": "대륜동", "region": "서귀포시 대륜동", "active": 46, "dormant": 1, "closed_total": 18, "new_12m": 6, "closed_12m": 3, "net_12m": 3, "churn_12m": 6.1, "rooms": 278, "median_tenure": 4.6, "by_service": {"농어촌민박": 26, "숙박업": 13, "관광숙박업": 7}}, {"sigungu": "서귀포시", "emd": "서홍동", "region": "서귀포시 서홍동", "active": 45, "dormant": 1, "closed_total": 22, "new_12m": 11, "closed_12m": 4, "net_12m": 7, "churn_12m": 8.2, "rooms": 304, "median_tenure": 3.4, "by_service": {"숙박업": 14, "농어촌민박": 25, "관광숙박업": 6}}, {"sigungu": "서귀포시", "emd": "성산읍", "region": "서귀포시 성산읍", "active": 45, "dormant": 1, "closed_total": 21, "new_12m": 8, "closed_12m": 4, "net_12m": 4, "churn_12m": 8.2, "rooms": 305, "median_tenure": 6.5, "by_service": {"농어촌민박": 28, "관광숙박업": 2, "숙박업": 15}}, {"sigungu": "서귀포시", "emd": "동홍동", "region": "서귀포시 동홍동", "active": 41, "dormant": 0, "closed_total": 23, "new_12m": 4, "closed_12m": 4, "net_12m": 0, "churn_12m": 8.9, "rooms": 247, "median_tenure": 5.1, "by_service": {"숙박업": 14, "관광숙박업": 8, "농어촌민박": 19}}, {"sigungu": "서귀포시", "emd": "안덕면", "region": "서귀포시 안덕면", "active": 38, "dormant": 2, "closed_total": 31, "new_12m": 5, "closed_12m": 6, "net_12m": -1, "churn_12m": 13.6, "rooms": 264, "median_tenure": 3.3, "by_service": {"농어촌민박": 19, "숙박업": 14, "관광숙박업": 5}}, {"sigungu": "서귀포시", "emd": "표선면", "region": "서귀포시 표선면", "active": 38, "dormant": 0, "closed_total": 8, "new_12m": 4, "closed_12m": 1, "net_12m": 3, "churn_12m": 2.6, "rooms": 259, "median_tenure": 3.2, "by_service": {"농어촌민박": 19, "관광숙박업": 5, "숙박업": 14}}], "seasonality": null}</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("payload").textContent);
+const SERIES_VARS = ["--series-1","--series-2","--series-3","--series-4"];
+const fmt = n => (n ?? 0).toLocaleString("ko-KR");
+const signed = n => (n > 0 ? "+" : "") + fmt(n);
+const cssVar = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+/* ---------------------------------------------------------------- 테마 */
+const btn = document.getElementById("themeBtn");
+btn.addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const next = cur ? (cur === "dark" ? "light" : "dark") : (sysDark ? "light" : "dark");
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("jejustr-theme", next); } catch (e) {}
+  renderAll();
+});
+try {
+  const saved = localStorage.getItem("jejustr-theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+} catch (e) {}
+
+/* ---------------------------------------------------------------- SVG 유틸 */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function mount(host, height) {
+  host.innerHTML = "";
+  const w = Math.max(host.clientWidth || 640, 320);
+  const svg = el("svg", { viewBox: `0 0 ${w} ${height}`, height, role: "img" }, host);
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  host.appendChild(tip);
+  return { svg, w, h: height, tip };
+}
+function showTip(host, tip, x, y, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = "1";
+  const bw = tip.offsetWidth, bh = tip.offsetHeight;
+  let left = x + 14;
+  if (left + bw > host.clientWidth) left = Math.max(0, x - bw - 14);
+  tip.style.left = left + "px";
+  tip.style.top = Math.max(0, y - bh - 10) + "px";
+}
+const hideTip = tip => { tip.style.opacity = "0"; };
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v / mag * 2) / 2 * mag;
+}
+
+/* ---------------------------------------------------------------- 타일 */
+function renderTiles() {
+  const s = DATA.summary;
+  const items = [
+    { k: "현재 영업중", v: fmt(s.active), s: `휴업 ${fmt(s.dormant)} · 누적 폐업 ${fmt(s.closed)}` },
+    { k: "최근 12개월 신규", v: fmt(s.new_12m), s: `${DATA.meta.window[0]} ~ ${DATA.meta.window[1]}` },
+    { k: "최근 12개월 폐업", v: fmt(s.closed_12m), s: `순증감 ${signed(s.net_12m)}` },
+    { k: "영업중 중위 업력", v: s.median_tenure != null ? s.median_tenure + "년" : "—",
+      s: `읍면동 ${fmt(DATA.regions.length)}곳` },
+  ];
+  document.getElementById("tiles").innerHTML = items.map(i =>
+    `<div class="tile"><div class="k">${i.k}</div><div class="v">${i.v}</div><div class="s">${i.s}</div></div>`
+  ).join("");
+}
+
+/* ---------------------------------------------------------------- 추이 라인 */
+function renderTrend() {
+  const host = document.getElementById("chTrend");
+  const months = DATA.series.months;
+  const names = Object.keys(DATA.series.byService);
+  if (!months.length || !names.length) { host.innerHTML = '<p class="notes">데이터 없음</p>'; return; }
+
+  const colors = {};
+  names.forEach((n, i) => { colors[n] = cssVar(SERIES_VARS[i % SERIES_VARS.length]); });
+  document.getElementById("lgTrend").innerHTML = names.map(n =>
+    `<span><i style="background:${colors[n]}"></i>${n}</span>`).join("");
+
+  const { svg, w, h, tip } = mount(host, 300);
+  /* 직접 라벨은 한글 업종명이 들어가 폭이 크다. 좁은 화면에서는 접고 범례+표로 대체한다. */
+  const withLabels = w >= 640;
+  const m = { t: 14, r: withLabels ? 118 : 16, b: 26, l: 46 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b;
+  const maxV = niceMax(Math.max(...names.flatMap(n => DATA.series.byService[n])));
+  const X = i => m.l + (months.length === 1 ? pw / 2 : (i / (months.length - 1)) * pw);
+  const Y = v => m.t + ph - (v / maxV) * ph;
+
+  const ink2 = cssVar("--text-secondary"), inkM = cssVar("--text-muted"), bd = cssVar("--border");
+  for (let g = 0; g <= 4; g++) {
+    const v = maxV * g / 4, y = Y(v);
+    el("line", { x1: m.l, x2: m.l + pw, y1: y, y2: y, stroke: bd, "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 8, y: y + 4, "text-anchor": "end", "font-size": 11, fill: inkM }, svg)
+      .textContent = fmt(Math.round(v));
+  }
+  /* 눈금은 폭에 맞춰 솎고, 마지막 눈금과 겹치는 것은 버린다. */
+  const maxTicks = Math.max(2, Math.floor(pw / 92));
+  const tickEvery = Math.max(1, Math.ceil((months.length - 1) / maxTicks));
+  const lastX = X(months.length - 1);
+  months.forEach((mo, i) => {
+    const isLast = i === months.length - 1;
+    if (!isLast && (i % tickEvery || lastX - X(i) < 56)) return;
+    el("text", { x: X(i), y: h - 6, "text-anchor": isLast ? "end" : "middle",
+      "font-size": 11, fill: inkM }, svg).textContent = mo;
+  });
+
+  names.forEach(n => {
+    const pts = DATA.series.byService[n].map((v, i) => `${X(i)},${Y(v)}`).join(" ");
+    el("polyline", { points: pts, fill: "none", stroke: colors[n], "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  });
+
+  /* 직접 라벨 — 라이트 모드 대비 경고에 대한 relief */
+  if (withLabels) {
+  const labels = names.map(n => {
+    const arr = DATA.series.byService[n];
+    return { n, y: Y(arr[arr.length - 1]), v: arr[arr.length - 1] };
+  }).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++)
+    if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
+  labels.forEach(l => {
+    el("text", { x: m.l + pw + 8, y: l.y + 4, "font-size": 11.5, fill: ink2 }, svg)
+      .textContent = `${l.n} ${fmt(l.v)}`;
+  });
+  }
+
+  const cross = el("line", { y1: m.t, y2: m.t + ph, stroke: cssVar("--border-strong"),
+    "stroke-width": 1, opacity: 0 }, svg);
+  const dots = names.map(n => el("circle", { r: 4, fill: colors[n],
+    stroke: cssVar("--surface-1"), "stroke-width": 2, opacity: 0 }, svg));
+  const hit = el("rect", { x: m.l, y: m.t, width: pw, height: ph, fill: "transparent" }, svg);
+
+  hit.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) * (w / r.width);
+    const i = Math.max(0, Math.min(months.length - 1,
+      Math.round(((px - m.l) / pw) * (months.length - 1))));
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 1);
+    names.forEach((n, k) => {
+      dots[k].setAttribute("cx", X(i));
+      dots[k].setAttribute("cy", Y(DATA.series.byService[n][i]));
+      dots[k].setAttribute("opacity", 1);
+    });
+    const rows = names.map(n =>
+      `<div class="tr"><i style="background:${colors[n]}"></i>${n}<b>${fmt(DATA.series.byService[n][i])}</b></div>`
+    ).join("");
+    const total = names.reduce((a, n) => a + DATA.series.byService[n][i], 0);
+    showTip(host, tip, X(i) * (host.clientWidth / w),
+      m.t + ph * 0.35, `<div class="th">${months[i]}</div>${rows}
+      <div class="tr" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">합계<b>${fmt(total)}</b></div>`);
+  });
+  hit.addEventListener("pointerleave", () => {
+    cross.setAttribute("opacity", 0);
+    dots.forEach(d => d.setAttribute("opacity", 0));
+    hideTip(tip);
+  });
+}
+
+/* ---------------------------------------------------------------- 상위 읍면동 */
+function renderTop() {
+  const host = document.getElementById("chTop");
+  const rows = DATA.regions.filter(r => r.emd !== "미상").slice(0, 20);
+  if (!rows.length) { host.innerHTML = '<p class="notes">데이터 없음</p>'; return; }
+  const probe = mount(host, 10);
+  const rowH = 22, m = { t: 6, r: 52, b: 6, l: probe.w >= 560 ? 118 : 84 };
+  const { svg, w, h, tip } = mount(host, m.t + rows.length * rowH + m.b);
+  const pw = w - m.l - m.r;
+  const maxV = Math.max(...rows.map(r => r.active)) || 1;
+  const c1 = cssVar("--series-1"), ink = cssVar("--text-primary"), ink2 = cssVar("--text-secondary");
+
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH, bh = 13;
+    el("text", { x: m.l - 10, y: y + bh, "text-anchor": "end", "font-size": 12, fill: ink2 }, svg)
+      .textContent = r.region;
+    /* 4px 라운드 데이터 엔드 + 막대 사이 2px 서피스 갭(rowH 22 vs bar 13) */
+    el("rect", { x: m.l, y: y + 3, width: Math.max(2, (r.active / maxV) * pw), height: bh,
+      rx: 4, fill: c1 }, svg);
+    el("text", { x: m.l + Math.max(2, (r.active / maxV) * pw) + 8, y: y + bh,
+      "font-size": 11.5, fill: ink }, svg).textContent = fmt(r.active);
+    const hit = el("rect", { x: 0, y: y, width: w, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => {
+      const mix = Object.entries(r.by_service)
+        .map(([k, v]) => `<div class="tr">${k}<b>${fmt(v)}</b></div>`).join("");
+      showTip(host, tip, m.l * (host.clientWidth / w) + 40, y + rowH,
+        `<div class="th">${r.region}</div>${mix}
+         <div class="tr" style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">최근 12개월 순증감<b>${signed(r.net_12m)}</b></div>`);
+    });
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 순증감 (다이버징) */
+function renderNet() {
+  const host = document.getElementById("chNet");
+  const pool = DATA.regions.filter(r => r.emd !== "미상" && r.net_12m !== 0);
+  pool.sort((a, b) => b.net_12m - a.net_12m);
+  const rows = pool.length > 16 ? [...pool.slice(0, 8), ...pool.slice(-8)] : pool;
+  document.getElementById("subNet").textContent =
+    `신규 인허가 − 폐업. 순증이 큰 곳은 신규 진입이 몰리는 지역이다. (변동 있는 ${pool.length}곳 중 상하위 표시)`;
+  if (!rows.length) { host.innerHTML = '<p class="notes">최근 12개월 변동 없음</p>'; return; }
+
+  const probe = mount(host, 10);
+  const rowH = 22, m = { t: 6, r: 20, b: 6, l: probe.w >= 560 ? 118 : 84 };
+  const { svg, w, h, tip } = mount(host, m.t + rows.length * rowH + m.b);
+  const pw = w - m.l - m.r;
+  const maxAbs = Math.max(...rows.map(r => Math.abs(r.net_12m))) || 1;
+  const zeroX = m.l + pw / 2, half = pw / 2 - 30;
+  const pos = cssVar("--pos"), neg = cssVar("--neg"), ink = cssVar("--text-primary"), ink2 = cssVar("--text-secondary");
+
+  el("line", { x1: zeroX, x2: zeroX, y1: m.t, y2: h - m.b, stroke: cssVar("--zero"), "stroke-width": 1 }, svg);
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH, bh = 13, len = Math.max(2, Math.abs(r.net_12m) / maxAbs * half);
+    const up = r.net_12m > 0;
+    el("text", { x: m.l - 10, y: y + bh, "text-anchor": "end", "font-size": 12, fill: ink2 }, svg)
+      .textContent = r.region;
+    el("rect", { x: up ? zeroX : zeroX - len, y: y + 3, width: len, height: bh, rx: 4,
+      fill: up ? pos : neg }, svg);
+    el("text", { x: up ? zeroX + len + 8 : zeroX - len - 8, y: y + bh,
+      "text-anchor": up ? "start" : "end", "font-size": 11.5, fill: ink }, svg)
+      .textContent = signed(r.net_12m);
+    const hit = el("rect", { x: 0, y: y, width: w, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => showTip(host, tip,
+      zeroX * (host.clientWidth / w), y + rowH,
+      `<div class="th">${r.region}</div>
+       <div class="tr">신규<b>${fmt(r.new_12m)}</b></div>
+       <div class="tr">폐업<b>${fmt(r.closed_12m)}</b></div>
+       <div class="tr">현재 영업중<b>${fmt(r.active)}</b></div>`));
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 계절성 */
+function renderSeason() {
+  if (!DATA.seasonality) return;
+  document.getElementById("cardSeason").hidden = false;
+  const host = document.getElementById("chSeason");
+  const vals = Array.from({ length: 12 }, (_, i) => DATA.seasonality[String(i + 1)] ?? 100);
+  const { svg, w, h, tip } = mount(host, 220);
+  const m = { t: 14, r: 16, b: 26, l: 40 };
+  const pw = w - m.l - m.r, ph = h - m.t - m.b;
+  const lo = Math.min(80, Math.min(...vals) - 5), hi = Math.max(120, Math.max(...vals) + 5);
+  const X = i => m.l + (i / 11) * pw, Y = v => m.t + ph - ((v - lo) / (hi - lo)) * ph;
+  const c = cssVar("--series-3"), inkM = cssVar("--text-muted"), bd = cssVar("--border");
+  [100].concat([lo, hi]).forEach(v => {
+    el("line", { x1: m.l, x2: m.l + pw, y1: Y(v), y2: Y(v),
+      stroke: v === 100 ? cssVar("--border-strong") : bd, "stroke-width": 1,
+      "stroke-dasharray": v === 100 ? "4 3" : "" }, svg);
+    el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: inkM }, svg)
+      .textContent = Math.round(v);
+  });
+  el("polyline", { points: vals.map((v, i) => `${X(i)},${Y(v)}`).join(" "), fill: "none",
+    stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+  vals.forEach((v, i) => {
+    el("circle", { cx: X(i), cy: Y(v), r: 4, fill: c, stroke: cssVar("--surface-1"), "stroke-width": 2 }, svg);
+    el("text", { x: X(i), y: h - 6, "text-anchor": "middle", "font-size": 11, fill: inkM }, svg)
+      .textContent = (i + 1) + "월";
+    const hit = el("circle", { cx: X(i), cy: Y(v), r: 12, fill: "transparent" }, svg);
+    hit.addEventListener("pointerenter", () => showTip(host, tip,
+      X(i) * (host.clientWidth / w), Y(v), `<div class="th">${i + 1}월</div><div class="tr">지수<b>${v}</b></div>`));
+    hit.addEventListener("pointerleave", () => hideTip(tip));
+  });
+}
+
+/* ---------------------------------------------------------------- 표 */
+const COLS = [
+  { k: "region", t: "읍면동", num: false },
+  { k: "active", t: "영업중" },
+  { k: "dormant", t: "휴업" },
+  { k: "new_12m", t: "신규 12M" },
+  { k: "closed_12m", t: "폐업 12M" },
+  { k: "net_12m", t: "순증감", sign: true },
+  { k: "churn_12m", t: "이탈률 %" },
+  { k: "median_tenure", t: "중위 업력" },
+  { k: "closed_total", t: "누적 폐업" },
+];
+let sortKey = "active", sortDir = -1;
+function renderTable() {
+  const thead = document.querySelector("#tbl thead");
+  thead.innerHTML = "<tr>" + COLS.map(c =>
+    `<th data-k="${c.k}"${c.k === sortKey ? ` aria-sort="${sortDir < 0 ? "descending" : "ascending"}"` : ""}>${c.t}</th>`
+  ).join("") + "</tr>";
+  thead.querySelectorAll("th").forEach(th => th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    if (k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = k === "region" ? 1 : -1; }
+    renderTable();
+  }));
+  const rows = [...DATA.regions].sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (typeof x === "string" || typeof y === "string")
+      return String(x ?? "").localeCompare(String(y ?? ""), "ko") * sortDir;
+    return ((x ?? -1) - (y ?? -1)) * sortDir;
+  });
+  document.querySelector("#tbl tbody").innerHTML = rows.map(r => "<tr>" + COLS.map(c => {
+    const v = r[c.k];
+    if (!c.sign) return `<td>${c.k === "region" ? v : (v == null ? "—" : fmt(v))}</td>`;
+    return `<td class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${signed(v)}</td>`;
+  }).join("") + "</tr>").join("");
+}
+
+/* ---------------------------------------------------------------- 정적 영역 */
+function renderStatic() {
+  const meta = DATA.meta, s = DATA.summary;
+  document.getElementById("subtitle").textContent =
+    `${meta.until} 기준 · 원천 ${meta.source} · 생성 ${meta.generated}`;
+  document.getElementById("banner").innerHTML = meta.is_sample
+    ? `<div class="banner"><b>⚠ 합성 샘플 데이터입니다.</b> 이 페이지의 모든 숫자는 파이프라인 동작 확인용으로
+       무작위 생성된 가짜 값이며 실제 제주 시장과 아무 관계가 없습니다.
+       실데이터로 바꾸려면 <code>jeju-str/data/raw/</code> 에 인허가 CSV를 넣고 다시 빌드하세요.</div>`
+    : "";
+  document.getElementById("notes").innerHTML =
+    meta.notes.map(n => `<li>${n}</li>`).join("") || "<li>없음</li>";
+  document.getElementById("footer").innerHTML =
+    `업종 구성: ${Object.entries(s.by_service).map(([k, v]) => `${k} ${fmt(v)}`).join(" · ")}<br>
+     시군구: ${Object.entries(s.by_sigungu).map(([k, v]) => `${k} ${fmt(v)}`).join(" · ")}<br>
+     영업신고 유효 업소 수 = 누적 인허가 − 누적 폐업. 인허가일자가 없는 건은 시계열에서 제외된다.`;
+}
+
+/* ---------------------------------------------------------------- 렌더 */
+function renderAll() {
+  renderTiles(); renderTrend(); renderTop(); renderNet(); renderSeason(); renderTable(); renderStatic();
+}
+renderAll();
+let rt;
+addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderAll, 150); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
+</script>
+</body>
+</html>
