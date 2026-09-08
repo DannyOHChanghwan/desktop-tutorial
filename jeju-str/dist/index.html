@@ -244,7 +244,7 @@ function renderTrend() {
   const lastX = X(months.length - 1);
   months.forEach((mo, i) => {
     const isLast = i === months.length - 1;
-    if (!isLast && (i % tickEvery || lastX - X(i) < 56)) return;
+    if (!isLast && (i % tickEvery || lastX - X(i) < 80)) return;
     el("text", { x: X(i), y: h - 6, "text-anchor": isLast ? "end" : "middle",
       "font-size": 11, fill: inkM }, svg).textContent = mo;
   });
